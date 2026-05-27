@@ -1,0 +1,82 @@
+[gd_scene format=3 uid="uid://bmainmenu01"]
+
+[ext_resource type="Script" uid="uid://d030bl2127230" path="res://scripts/main_menu.gd" id="1_script"]
+
+[node name="MainMenu" type="Control" unique_id=751170891]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Bg" type="Panel" parent="." unique_id=96034033]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"ScreenBg"
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1997066037]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Center" type="CenterContainer" parent="Margin" unique_id=1626631067]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Margin/Center" unique_id=882653967]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Header" type="VBoxContainer" parent="Margin/Center/VBox" unique_id=860884320]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Title" type="Label" parent="Margin/Center/VBox/Header" unique_id=1959308321]
+layout_mode = 2
+theme_override_font_sizes/font_size = 42
+text = "Vipassana Simulator"
+horizontal_alignment = 1
+
+[node name="Credit" type="Label" parent="Margin/Center/VBox/Header" unique_id=1107074718]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.451, 0.4, 0.31, 1)
+theme_override_font_sizes/font_size = 14
+text = "by Yunku Kang"
+horizontal_alignment = 1
+
+[node name="BtnStart" type="Button" parent="Margin/Center/VBox" unique_id=1954655765]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Start"
+
+[node name="BtnStages" type="Button" parent="Margin/Center/VBox" unique_id=851087429]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Stage Select"
+
+[node name="BtnOptions" type="Button" parent="Margin/Center/VBox" unique_id=1705709186]
+custom_minimum_size = Vector2(320, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Options"
+
+[connection signal="pressed" from="Margin/Center/VBox/BtnStart" to="." method="_on_start_pressed"]
+[connection signal="pressed" from="Margin/Center/VBox/BtnStages" to="." method="_on_stages_pressed"]
+[connection signal="pressed" from="Margin/Center/VBox/BtnOptions" to="." method="_on_options_pressed"]

@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://dstageselect1"]
+
+[ext_resource type="Script" uid="uid://c2ssqy15u84sh" path="res://scripts/stage_select.gd" id="1_script"]
+
+[node name="StageSelect" type="Control" unique_id=1625917548]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Bg" type="Panel" parent="." unique_id=542225798]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"ScreenBg"
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=680815908]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Margin" unique_id=941601408]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Margin/VBox" unique_id=1125549753]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Stage Select"
+horizontal_alignment = 1
+
+[node name="Stages" type="CenterContainer" parent="Margin/VBox" unique_id=1640228278]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="List" type="VBoxContainer" parent="Margin/VBox/Stages" unique_id=1300711489]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 8
+
+[node name="BtnBack" type="Button" parent="Margin/VBox" unique_id=932927011]
+custom_minimum_size = Vector2(200, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Back"

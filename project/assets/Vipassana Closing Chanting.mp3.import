@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dvypxw5tnc17"
+path="res://.godot/imported/Vipassana Closing Chanting.mp3-b55e25aed669e2a08cbfa7190b3ecb32.mp3str"
+
+[deps]
+
+source_file="res://assets/Vipassana Closing Chanting.mp3"
+dest_files=["res://.godot/imported/Vipassana Closing Chanting.mp3-b55e25aed669e2a08cbfa7190b3ecb32.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

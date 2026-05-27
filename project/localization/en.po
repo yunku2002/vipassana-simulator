@@ -1,0 +1,154 @@
+# Don't remove the two lines below, they're required for gettext to work correctly.
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Vipassana Simulator\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en\n"
+
+msgid "APP_TITLE"
+msgstr "Vipassana Simulator"
+
+msgid "CREDIT_TEXT"
+msgstr "by Yunku Kang"
+
+msgid "BTN_START"
+msgstr "Start"
+
+msgid "MENU_STAGE_SELECT"
+msgstr "Stage Select"
+
+msgid "MENU_OPTIONS"
+msgstr "Options"
+
+msgid "BTN_MENU"
+msgstr "Main Menu"
+
+msgid "CONFIRM_EXIT_TITLE"
+msgstr "Return to main menu?"
+
+msgid "BTN_BACK"
+msgstr "Back"
+
+msgid "BTN_CLOSE"
+msgstr "Close"
+
+msgid "BTN_CANCEL"
+msgstr "Cancel"
+
+msgid "BTN_LEARN_MORE"
+msgstr "Learn More"
+
+msgid "STAGE_INTRO_BACKGROUND_TITLE"
+msgstr "Background"
+
+msgid "OPTIONS_LANGUAGE"
+msgstr "Language"
+
+msgid "OPTIONS_VOLUME"
+msgstr "Volume"
+
+msgid "STAGE_ANAPANA_1"
+msgstr "Anapana-1"
+
+msgid "STAGE_ANAPANA_2"
+msgstr "Anapana-2"
+
+msgid "STAGE_ANAPANA_3"
+msgstr "Anapana-3"
+
+msgid "STAGE_ANAPANA_4"
+msgstr "Anapana-4"
+
+msgid "STAGE_VIPASSANA_1"
+msgstr "Vipassana-1"
+
+msgid "STAGE_VIPASSANA_2"
+msgstr "Vipassana-2"
+
+msgid "STAGE_VIPASSANA_3"
+msgstr "Vipassana-3"
+
+msgid "STAGE_VIPASSANA_4"
+msgstr "Vipassana-4"
+
+msgid "STAGE_VIPASSANA_5"
+msgstr "Vipassana-5"
+
+msgid "STAGE_VIPASSANA_6"
+msgstr "Vipassana-6"
+
+msgid "STAGE_METTA_BHAVANA"
+msgstr "Metta Bhavana"
+
+msgid "STAGE_ANAPANA_1_GOAL"
+msgstr "Observe your breathing."
+
+msgid "STAGE_ANAPANA_1_INSTRUCTIONS"
+msgstr "You are sitting still, inhaling and exhaling as usual. Press and hold the matching button as the breath changes."
+
+msgid "STAGE_ANAPANA_1_BACKGROUND"
+msgstr ""
+"Welcome to Vipassana Simulator! "
+"In Vipassana (insight) meditation, your goal is to experience "
+"the ultimate truth through awareness and equanimity.\n\n"
+"Anapanasati (mindfulness of breathing) is a preparatory step "
+"where you start by simply keeping your focus on your natural breath, "
+"constantly observing whether you are breathing in or out."
+
+msgid "STAGE_ANAPANA_2_GOAL"
+msgstr "Let go of all thoughts."
+
+msgid "STAGE_ANAPANA_2_INSTRUCTIONS"
+msgstr "Random thoughts hinder your focus. Release them by swiping them away."
+
+msgid "STAGE_ANAPANA_2_BACKGROUND"
+msgstr ""
+"Observing your breath seems simple enough, but in practice, "
+"you will find that staying focused on it is surprisingly difficult "
+"due to your mind wandering all over the place.\n"
+"You handle this by quickly noticing the distractions and returning to your breath."
+
+msgid "STAGE_ANAPANA_3_GOAL"
+msgstr "Observe the sensations around the nostrils and the upper lip."
+
+msgid "STAGE_ANAPANA_4_GOAL"
+msgstr "Observe the subtler sensations on the narrower area: the philtrum."
+
+msgid "STAGE_VIPASSANA_1_GOAL"
+msgstr "Observe the sensations of the entire body, part by part."
+
+msgid "STAGE_VIPASSANA_2_GOAL"
+msgstr "Be mindful of impermanence and do not generate craving or aversion towards sensations."
+
+msgid "STAGE_VIPASSANA_3_GOAL"
+msgstr "Observe symmetrically when possible."
+
+msgid "STAGE_VIPASSANA_4_GOAL"
+msgstr "Keeping equanimity towards gross sensations will break them down into subtle ones."
+
+msgid "STAGE_VIPASSANA_5_GOAL"
+msgstr "Observe as a \"free flow\" when possible."
+
+msgid "STAGE_VIPASSANA_6_GOAL"
+msgstr "Observe into the body."
+
+msgid "STAGE_METTA_BHAVANA_GOAL"
+msgstr "Share the goodwill with all beings."
+
+msgid "STAGE_CLEAR"
+msgstr "Stage Clear"
+
+msgid "BTN_CONTINUE"
+msgstr "Continue"
+
+msgid "BTN_IN"
+msgstr "Inhaling"
+
+msgid "BTN_OUT"
+msgstr "Exhaling"
+
+msgid "GAUGE_LABEL"
+msgstr "Awareness"
