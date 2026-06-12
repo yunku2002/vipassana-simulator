@@ -3,6 +3,7 @@ extends Node
 ## Ordered stage list: title key prefix and scene path.
 const STAGES: Array[Dictionary] = [
 	{"prefix": "STAGE_ANAPANA_1", "scene": "res://scenes/anapana_1.tscn"},
+	{"prefix": "STAGE_ANAPANA_2", "scene": "res://scenes/anapana_2.tscn"},
 ]
 
 

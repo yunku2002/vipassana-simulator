@@ -18,7 +18,7 @@ func _notification(what: int) -> void:
 
 
 func _refresh_texts() -> void:
-	_title.text = tr("MENU_STAGE_SELECT")
+	_title.text = tr("BTN_STAGE_SELECT")
 	_back.text = tr("BTN_BACK")
 
 

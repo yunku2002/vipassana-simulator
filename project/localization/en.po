@@ -17,26 +17,32 @@ msgstr "by Yunku Kang"
 msgid "BTN_START"
 msgstr "Start"
 
-msgid "MENU_STAGE_SELECT"
+msgid "BTN_CONTINUE"
+msgstr "Continue"
+
+msgid "BTN_STAGE_SELECT"
 msgstr "Stage Select"
 
-msgid "MENU_OPTIONS"
+msgid "BTN_OPTIONS"
 msgstr "Options"
-
-msgid "BTN_MENU"
-msgstr "Main Menu"
-
-msgid "CONFIRM_EXIT_TITLE"
-msgstr "Return to main menu?"
 
 msgid "BTN_BACK"
 msgstr "Back"
 
+msgid "OPTIONS_LANGUAGE"
+msgstr "Language"
+
+msgid "OPTIONS_VOLUME"
+msgstr "Volume"
+
 msgid "BTN_CLOSE"
 msgstr "Close"
 
-msgid "BTN_CANCEL"
-msgstr "Cancel"
+msgid "BTN_INSTRUCTIONS"
+msgstr "Instructions"
+
+msgid "BTN_MENU"
+msgstr "Main Menu"
 
 msgid "BTN_LEARN_MORE"
 msgstr "Learn More"
@@ -44,11 +50,14 @@ msgstr "Learn More"
 msgid "STAGE_INTRO_BACKGROUND_TITLE"
 msgstr "Background"
 
-msgid "OPTIONS_LANGUAGE"
-msgstr "Language"
+msgid "CONFIRM_EXIT_TITLE"
+msgstr "Return to main menu?"
 
-msgid "OPTIONS_VOLUME"
-msgstr "Volume"
+msgid "BTN_CANCEL"
+msgstr "Cancel"
+
+msgid "STAGE_CLEAR"
+msgstr "Stage Clear"
 
 msgid "STAGE_ANAPANA_1"
 msgstr "Anapana-1"
@@ -102,14 +111,16 @@ msgid "STAGE_ANAPANA_2_GOAL"
 msgstr "Let go of all thoughts."
 
 msgid "STAGE_ANAPANA_2_INSTRUCTIONS"
-msgstr "Random thoughts hinder your focus. Release them by swiping them away."
+msgstr "You continue to observe your breathing, but random thoughts hinder your focus. Release them by pressing and holding them."
 
 msgid "STAGE_ANAPANA_2_BACKGROUND"
 msgstr ""
 "Observing your breath seems simple enough, but in practice, "
 "you will find that staying focused on it is surprisingly difficult "
-"due to your mind wandering all over the place.\n"
-"You handle this by quickly noticing the distractions and returning to your breath."
+"because your mind wanders all over the place. "
+"You handle this by quickly noticing the distractions and returning to your breath.\n\n"
+"Again, this is easier said than done at first, "
+"but with practice random thoughts decrease in frequency."
 
 msgid "STAGE_ANAPANA_3_GOAL"
 msgstr "Observe the sensations around the nostrils and the upper lip."
@@ -138,12 +149,6 @@ msgstr "Observe into the body."
 msgid "STAGE_METTA_BHAVANA_GOAL"
 msgstr "Share the goodwill with all beings."
 
-msgid "STAGE_CLEAR"
-msgstr "Stage Clear"
-
-msgid "BTN_CONTINUE"
-msgstr "Continue"
-
 msgid "BTN_IN"
 msgstr "Inhaling"
 
@@ -152,3 +157,16 @@ msgstr "Exhaling"
 
 msgid "GAUGE_LABEL"
 msgstr "Awareness"
+
+#. Thought subjects — one entry per line
+msgid "THOUGHT_SUBJECTS"
+msgstr ""
+"Lunch plans\n"
+"Old memory\n"
+"Future worries\n"
+"Song stuck in head\n"
+"Weekend schedule\n"
+"Random idea\n"
+"Unread messages\n"
+"Work to-do list\n"
+"Recent conversation\n"

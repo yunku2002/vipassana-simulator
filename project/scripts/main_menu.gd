@@ -20,8 +20,8 @@ func _refresh_texts() -> void:
 	_title.text = tr("APP_TITLE")
 	_credit.text = tr("CREDIT_TEXT")
 	_btn_start.text = tr("BTN_CONTINUE") if GameSettings.can_continue_from_title() else tr("BTN_START")
-	_btn_stages.text = tr("MENU_STAGE_SELECT")
-	_btn_options.text = tr("MENU_OPTIONS")
+	_btn_stages.text = tr("BTN_STAGE_SELECT")
+	_btn_options.text = tr("BTN_OPTIONS")
 
 
 func _on_start_pressed() -> void:

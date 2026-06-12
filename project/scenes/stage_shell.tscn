@@ -1,0 +1,163 @@
+[gd_scene format=3 uid="uid://stageshell01"]
+
+[ext_resource type="Script" uid="uid://bddjbrqa01u8s" path="res://scripts/stage_shell.gd" id="1_shell"]
+
+[node name="StageShell" type="Control" unique_id=2009231832]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_shell")
+
+[node name="Bg" type="Panel" parent="." unique_id=1666543357]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_type_variation = &"ScreenBg"
+
+[node name="Margin" type="MarginContainer" parent="." unique_id=1795654008]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="Body" type="Control" parent="Margin" unique_id=1296697649]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="CornerButtons" type="VBoxContainer" parent="Margin/Body" unique_id=1092342998]
+layout_mode = 1
+offset_right = 140.0
+offset_bottom = 144.0
+theme_override_constants/separation = 8
+
+[node name="BtnInstructions" type="Button" parent="Margin/Body/CornerButtons" unique_id=1092342001]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Instructions"
+
+[node name="BtnOptions" type="Button" parent="Margin/Body/CornerButtons" unique_id=307275069]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Options"
+
+[node name="BtnMainMenu" type="Button" parent="Margin/Body/CornerButtons" unique_id=112294629]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Main Menu"
+
+[node name="ExitConfirmLayer" type="CanvasLayer" parent="." unique_id=1354638281]
+process_mode = 3
+
+[node name="Dim" type="ColorRect" parent="ExitConfirmLayer" unique_id=1593546189]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.169, 0.141, 0.094, 0.55)
+
+[node name="Center" type="CenterContainer" parent="ExitConfirmLayer" unique_id=955186682]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="ExitConfirmLayer/Center" unique_id=1569491360]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="ExitConfirmLayer/Center/Panel" unique_id=878996910]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="ExitConfirmLayer/Center/Panel/Margin" unique_id=2026352688]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="ExitConfirmLayer/Center/Panel/Margin/VBox" unique_id=2140768677]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Return to main menu?"
+horizontal_alignment = 1
+
+[node name="ButtonsRow" type="HBoxContainer" parent="ExitConfirmLayer/Center/Panel/Margin/VBox" unique_id=983592247]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="BtnCancel" type="Button" parent="ExitConfirmLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=1752028907]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Cancel"
+
+[node name="BtnConfirm" type="Button" parent="ExitConfirmLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=2075656976]
+custom_minimum_size = Vector2(140, 40)
+layout_mode = 2
+text = "Main Menu"
+
+[node name="WinLayer" type="CanvasLayer" parent="." unique_id=1809824825]
+
+[node name="Dim" type="ColorRect" parent="WinLayer" unique_id=1635729471]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.169, 0.141, 0.094, 0.55)
+
+[node name="Center" type="CenterContainer" parent="WinLayer" unique_id=1704091901]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="WinLayer/Center" unique_id=1915666346]
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="WinLayer/Center/Panel" unique_id=73213101]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="WinLayer/Center/Panel/Margin" unique_id=1965873341]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="WinTitle" type="Label" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=1703971998]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Stage Clear"
+horizontal_alignment = 1
+
+[node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=744248170]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Continue"
+
+[node name="BtnMenu" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=2072382797]
+custom_minimum_size = Vector2(220, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Main Menu"

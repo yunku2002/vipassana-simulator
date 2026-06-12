@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://fanapana002"]
+
+[ext_resource type="PackedScene" uid="uid://fanapana001" path="res://scenes/anapana_1.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://brmv1wwqiprwf" path="res://scripts/anapana_2.gd" id="2_script"]
+
+[node name="Anapana2" unique_id=1042024974 instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+thought_goal_count = 16
+thought_interval_start = 3.4
+thought_interval_peak = 0.85
+thought_interval_end = 4.2
+thought_peak_progress = 0.45
+thought_post_goal_interval_min = 6.0
+thought_post_goal_interval_max = 11.0
+thought_hold_to_clear_sec = 0.75
+gauge_fill_per_sec = 12.0
+gauge_drain_per_sec = 8.0
+stage_scene_path = "res://scenes/anapana_2.tscn"
+intro_prefix = "STAGE_ANAPANA_2"
+
+[node name="ThoughtLayer" type="Control" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="3" unique_id=1750358755]
+z_index = 5
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

@@ -17,26 +17,32 @@ msgstr "강윤구 만듦"
 msgid "BTN_START"
 msgstr "시작"
 
-msgid "MENU_STAGE_SELECT"
+msgid "BTN_CONTINUE"
+msgstr "계속"
+
+msgid "BTN_STAGE_SELECT"
 msgstr "스테이지 선택"
 
-msgid "MENU_OPTIONS"
+msgid "BTN_OPTIONS"
 msgstr "옵션"
-
-msgid "BTN_MENU"
-msgstr "메인 메뉴"
-
-msgid "CONFIRM_EXIT_TITLE"
-msgstr "메인 메뉴로 돌아갈까요?"
 
 msgid "BTN_BACK"
 msgstr "뒤로"
 
+msgid "OPTIONS_LANGUAGE"
+msgstr "언어"
+
+msgid "OPTIONS_VOLUME"
+msgstr "음량"
+
 msgid "BTN_CLOSE"
 msgstr "닫기"
 
-msgid "BTN_CANCEL"
-msgstr "취소"
+msgid "BTN_INSTRUCTIONS"
+msgstr "안내"
+
+msgid "BTN_MENU"
+msgstr "메인 메뉴"
 
 msgid "BTN_LEARN_MORE"
 msgstr "더 알아보기"
@@ -44,11 +50,14 @@ msgstr "더 알아보기"
 msgid "STAGE_INTRO_BACKGROUND_TITLE"
 msgstr "배경"
 
-msgid "OPTIONS_LANGUAGE"
-msgstr "언어"
+msgid "CONFIRM_EXIT_TITLE"
+msgstr "메인 메뉴로 돌아갈까요?"
 
-msgid "OPTIONS_VOLUME"
-msgstr "음량"
+msgid "BTN_CANCEL"
+msgstr "취소"
+
+msgid "STAGE_CLEAR"
+msgstr "스테이지 통과"
 
 msgid "STAGE_ANAPANA_1"
 msgstr "아나빠나-1"
@@ -102,14 +111,16 @@ msgid "STAGE_ANAPANA_2_GOAL"
 msgstr "모든 생각을 내려놓으십시오."
 
 msgid "STAGE_ANAPANA_2_INSTRUCTIONS"
-msgstr "갖은 잡념이 집중을 방해합니다. 스와이프하여 떨쳐내세요."
+msgstr "계속해서 호흡을 관찰하는데 갖은 잡념이 집중을 방해합니다. 길게 눌러서 떨쳐내세요."
 
 msgid "STAGE_ANAPANA_2_BACKGROUND"
 msgstr ""
 "호흡을 관찰하는 건 언뜻 간단해보이지만 "
 "실제로는 마음이 이리저리 배회하기 때문에 "
-"집중을 유지하기가 의외로 어렵습니다.\n"
-"이러한 방황을 재빠르게 인지하고 호흡으로 돌아옴으로써 대처합니다."
+"집중을 유지하기가 의외로 어렵습니다. "
+"이러한 흐트러짐을 재빠르게 인지하고 호흡으로 돌아옴으로써 대처합니다.\n\n"
+"이 또한 말처럼 쉬운 일이 아니지만 "
+"훈련을 통해 잡념의 빈도를 줄일 수 있습니다."
 
 msgid "STAGE_ANAPANA_3_GOAL"
 msgstr ""
@@ -138,12 +149,6 @@ msgstr ""
 msgid "STAGE_METTA_BHAVANA_GOAL"
 msgstr ""
 
-msgid "STAGE_CLEAR"
-msgstr "스테이지 통과"
-
-msgid "BTN_CONTINUE"
-msgstr "계속"
-
 msgid "BTN_IN"
 msgstr "들숨"
 
@@ -152,3 +157,16 @@ msgstr "날숨"
 
 msgid "GAUGE_LABEL"
 msgstr "알아차림"
+
+#. Thought subjects — one entry per line
+msgid "THOUGHT_SUBJECTS"
+msgstr ""
+"점심 뭐 먹지\n"
+"예전 기억\n"
+"미래 걱정\n"
+"머릿속 노래\n"
+"주말 계획\n"
+"갑자기 떠오른 생각\n"
+"안 읽은 메시지\n"
+"업무 할 일\n"
+"최근 대화\n"

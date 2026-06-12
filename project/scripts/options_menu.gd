@@ -111,7 +111,7 @@ func _sync_from_settings() -> void:
 
 
 func _refresh_texts() -> void:
-	_title.text = tr("MENU_OPTIONS")
+	_title.text = tr("BTN_OPTIONS")
 	_lang_label.text = tr("OPTIONS_LANGUAGE")
 	_vol_label.text = tr("OPTIONS_VOLUME")
 	_close.text = tr("BTN_CLOSE")

@@ -10,7 +10,7 @@ const SCENE := preload("res://scenes/stage_intro_overlay.tscn")
 @onready var _goal: Label = $Center/Panel/Margin/VBox/Goal
 @onready var _instructions_block: VBoxContainer = $Center/Panel/Margin/VBox/InstructionsBlock
 @onready var _btn_learn_more: Button = $Center/Panel/Margin/VBox/ActionsRow/BtnLearnMore
-@onready var _btn_start: Button = $Center/Panel/Margin/VBox/ActionsRow/BtnStart
+@onready var _btn_continue: Button = $Center/Panel/Margin/VBox/ActionsRow/BtnContinue
 @onready var _intro_root: Control = $Center
 @onready var _background_root: CenterContainer = $BackgroundView
 @onready var _background_title: Label = $BackgroundView/Panel/Margin/VBox/BackgroundTitle
@@ -35,7 +35,7 @@ func _ready() -> void:
 		get_tree().paused = true
 		_paused_by_self = true
 	_btn_learn_more.pressed.connect(_on_learn_more_pressed)
-	_btn_start.pressed.connect(_on_start_pressed)
+	_btn_continue.pressed.connect(_on_continue_pressed)
 	_btn_background_back.pressed.connect(_hide_background)
 	_background_root.hide()
 	_apply_content()
@@ -54,7 +54,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _background_root.visible:
 		_hide_background()
 	else:
-		_on_start_pressed()
+		_on_continue_pressed()
 	get_viewport().set_input_as_handled()
 
 
@@ -72,7 +72,7 @@ func _apply_content() -> void:
 
 func _refresh_texts() -> void:
 	_btn_learn_more.text = tr("BTN_LEARN_MORE")
-	_btn_start.text = tr("BTN_START")
+	_btn_continue.text = tr("BTN_CONTINUE")
 	_background_title.text = tr("STAGE_INTRO_BACKGROUND_TITLE")
 	_btn_background_back.text = tr("BTN_BACK")
 
@@ -143,7 +143,7 @@ func _hide_background() -> void:
 	_intro_root.show()
 
 
-func _on_start_pressed() -> void:
+func _on_continue_pressed() -> void:
 	if _paused_by_self:
 		get_tree().paused = false
 	finished.emit()

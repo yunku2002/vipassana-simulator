@@ -23,8 +23,15 @@ _global_script_classes=[{
 "icon": "",
 "language": &"GDScript",
 "path": "res://scripts/ui/chevron_scroll_indicator.gd"
+}, {
+"base": &"Control",
+"class": &"Anapana1",
+"icon": "",
+"language": &"GDScript",
+"path": "res://scripts/anapana_1.gd"
 }]
 _global_script_class_icons={
+"Anapana1": "",
 "ChevronScrollIndicator": ""
 }
 
@@ -33,6 +40,7 @@ _global_script_class_icons={
 StageRegistry="*res://autoload/stage_registry.gd"
 GameSettings="*res://autoload/game_settings.gd"
 Music="*res://autoload/music_player.gd"
+ThoughtSubjects="*res://autoload/thought_subjects.gd"
 
 [display]
 

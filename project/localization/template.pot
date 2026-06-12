@@ -16,25 +16,31 @@ msgstr ""
 msgid "BTN_START"
 msgstr ""
 
-msgid "MENU_STAGE_SELECT"
+msgid "BTN_CONTINUE"
 msgstr ""
 
-msgid "MENU_OPTIONS"
+msgid "BTN_STAGE_SELECT"
 msgstr ""
 
-msgid "BTN_MENU"
-msgstr ""
-
-msgid "CONFIRM_EXIT_TITLE"
+msgid "BTN_OPTIONS"
 msgstr ""
 
 msgid "BTN_BACK"
 msgstr ""
 
+msgid "OPTIONS_LANGUAGE"
+msgstr ""
+
+msgid "OPTIONS_VOLUME"
+msgstr ""
+
 msgid "BTN_CLOSE"
 msgstr ""
 
-msgid "BTN_CANCEL"
+msgid "BTN_INSTRUCTIONS"
+msgstr ""
+
+msgid "BTN_MENU"
 msgstr ""
 
 msgid "BTN_LEARN_MORE"
@@ -43,10 +49,13 @@ msgstr ""
 msgid "STAGE_INTRO_BACKGROUND_TITLE"
 msgstr ""
 
-msgid "OPTIONS_LANGUAGE"
+msgid "CONFIRM_EXIT_TITLE"
 msgstr ""
 
-msgid "OPTIONS_VOLUME"
+msgid "BTN_CANCEL"
+msgstr ""
+
+msgid "STAGE_CLEAR"
 msgstr ""
 
 msgid "STAGE_ANAPANA_1"
@@ -127,12 +136,6 @@ msgstr ""
 msgid "STAGE_METTA_BHAVANA_GOAL"
 msgstr ""
 
-msgid "STAGE_CLEAR"
-msgstr ""
-
-msgid "BTN_CONTINUE"
-msgstr ""
-
 msgid "BTN_IN"
 msgstr ""
 
@@ -140,4 +143,8 @@ msgid "BTN_OUT"
 msgstr ""
 
 msgid "GAUGE_LABEL"
+msgstr ""
+
+#. Thought subjects — one entry per line
+msgid "THOUGHT_SUBJECTS"
 msgstr ""

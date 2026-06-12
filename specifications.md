@@ -19,8 +19,8 @@ A Godot-based sequence of minigames based on the 10-day introductory meditation 
 - Whenever a stage is started, it is set as the next stage, and when in it is cleared, the next one is set as the next stage, unless the stage was the final one, in which case it is unset.
 - The Stage Select button loads a list of buttons for all stages, each of which loads the stage, and a Back button.
 - The Options button opens the options panel (options listed below) with a dimmed background.
-- Each stage starts with showing a one-sentence goal and gameplay instructions, with a Learn More button for theoretical background.
-- Every stage has an Options button on the upper left corner, which acts the same as the one on the title screen, and a Main Menu button below it, which prompts the user for confirmation before returning to the title screen.
+- Each stage starts with a panel showing a one-sentence goal and gameplay instructions, with a Learn More button for theoretical background and a Continue button.
+- Every stage has an Instructions button on the upper left corner, which opens the same panel described above, an Options button below it, which acts the same as the one on the title screen, and a Main Menu button below it, which prompts the user for confirmation before returning to the title screen.
 - After each stage is cleared, Stage Clear message pops up with Continue and Main Menu buttons.
 - For the final stage, the Continue button is replaced with a goodbye message.
 
@@ -52,6 +52,6 @@ The objective is to press and hold the correct Inhaling/Exhaling button (above t
 
 ### Anapana-2
 
-Same as before, but the gauge is full in the beginning and random thoughts start to appear, covering and disabling the buttons. They appear as thought bubbles with a subject (that bears no significance) chosen randomly from a list.
-The player should remove the thought by rubbing across the bubble like an eraser. After the first thought is erased after appearing, more thoughts appear and may overlap underneath. The frequency increases for a while but then eventually fades. The stage is cleared after a certain number of thoughts are removed and the gauge is full.
+Same as before, but the gauge is full in the beginning and random thoughts start to appear over the buttons, obscuring and disabling them, and interrupting any current hold. They appear as thought bubbles with a subject (that bears no significance) chosen randomly from a list.
+The player should remove the thought by pressing and holding it. The thought gradually becomes transparent when held and opaque when not. After the first thought is erased, more thoughts appear to a maximum of five and may overlap. New thoughts appear underneath, and only the oldest thought can be removed. Other thoughts are grayed out. The frequency increases for a while but then eventually fades. The stage is cleared after a certain number of thoughts are removed and the gauge is full.
 Thoughts continue to appear once in a while throughout the rest of the game, except the last stage.
