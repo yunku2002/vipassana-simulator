@@ -4,21 +4,23 @@ extends Anapana1
 @export var thought_goal_count: int
 @export var thought_interval_start: float
 @export var thought_interval_peak: float
-@export var thought_interval_end: float
-@export var thought_peak_progress: float
+@export var thought_peak_erase_count: int
+@export var thought_slow_erase_count: int
 @export var thought_post_goal_interval_min: float
 @export var thought_post_goal_interval_max: float
 @export var thought_hold_to_clear_sec: float
-@export var thought_min_separation: float = 96.0
+@export var thought_min_separation: float
 
 const _THOUGHT_INACTIVE_GRAY := 0.8
 const _THOUGHT_PLACEMENT_ATTEMPTS := 8
+const _CLOUD_READY_TARGET := 1
 
 @onready var _thought_layer: Control = $Margin/Body/ThoughtLayer
 
 var _thought_timer: float = 0.0
 var _thoughts_erased: int = 0
-var _thought_bakes_pending: int = 0
+var _ready_clouds: Array[Image] = []
+var _cloud_bakes_pending: int = 0
 var _thought_bubbles: Array[ThoughtBubble] = []
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
@@ -29,14 +31,22 @@ func _ready() -> void:
 	_gauge_bar.value = 100.0
 	_thought_timer = _next_thought_interval()
 	ThoughtBubble.prewarm_trail_dots()
+	_ensure_cloud_ready()
 	super._ready()
 
 
 func _on_before_gauge_update(delta: float) -> void:
+	_ensure_cloud_ready()
 	_update_thought_spawning(delta)
 	_update_thought_hold(delta)
 	_update_thought_visuals()
 	_sync_breath_button_lock()
+
+
+func _refresh_gameplay_texts() -> void:
+	super._refresh_gameplay_texts()
+	for bubble in _thought_bubbles:
+		bubble.set_subject_text(ThoughtSubjects.text_at(bubble.subject_index))
 
 
 func _is_stage_cleared() -> bool:
@@ -49,64 +59,82 @@ func _release_breath_buttons() -> void:
 
 
 func _sync_breath_button_lock() -> void:
-	var blocked := _thought_bubbles.size() > 0
+	var blocked := _has_revealed_thought()
 	if blocked:
 		_release_breath_buttons()
 	_btn_in.disabled = blocked
 	_btn_out.disabled = blocked
 
 
+func _has_revealed_thought() -> bool:
+	for bubble in _thought_bubbles:
+		if bubble.is_cloud_revealed():
+			return true
+	return false
+
+
 func _update_thought_spawning(delta: float) -> void:
 	_thought_timer -= delta
 	if _thought_timer > 0.0:
 		return
-	if _thought_bakes_pending > 0:
-		return
 	if _thought_bubbles.size() >= _active_thought_cap():
 		return
-	_begin_thought_spawn()
+	if _ready_clouds.is_empty():
+		return
+	_spawn_thought(_ready_clouds.pop_front())
 	_thought_timer = _next_thought_interval()
+	_ensure_cloud_ready()
 
 
 func _next_thought_interval() -> float:
-	if _thoughts_erased >= thought_goal_count:
+	if _thoughts_erased >= thought_slow_erase_count:
 		return randf_range(thought_post_goal_interval_min, thought_post_goal_interval_max)
-	var p := clampf(float(_thoughts_erased) / maxf(1.0, float(thought_goal_count)), 0.0, 1.0)
-	if p < thought_peak_progress:
-		var up := p / maxf(thought_peak_progress, 0.001)
-		return lerpf(thought_interval_start, thought_interval_peak, up)
-	var down := (p - thought_peak_progress) / maxf(1.0 - thought_peak_progress, 0.001)
-	return lerpf(thought_interval_peak, thought_interval_end, down)
+	if _thoughts_erased >= thought_peak_erase_count:
+		var span := maxi(thought_slow_erase_count - thought_peak_erase_count, 1)
+		var t := float(_thoughts_erased - thought_peak_erase_count) / float(span)
+		var low := lerpf(thought_interval_peak, thought_post_goal_interval_min, t)
+		var high := lerpf(thought_interval_peak, thought_post_goal_interval_max, t)
+		return randf_range(low, high)
+	var up := clampf(float(_thoughts_erased) / maxf(1.0, float(thought_peak_erase_count)), 0.0, 1.0)
+	return lerpf(thought_interval_start, thought_interval_peak, up)
 
 
 func _active_thought_cap() -> int:
 	return 1 if _thoughts_erased <= 0 else 5
 
 
-func _begin_thought_spawn() -> void:
-	_thought_bakes_pending += 1
-	ThoughtBubble.bake_cloud_texture_async(_on_thought_cloud_baked)
+func _ensure_cloud_ready() -> void:
+	while _ready_clouds.size() + _cloud_bakes_pending < _CLOUD_READY_TARGET:
+		_cloud_bakes_pending += 1
+		ThoughtBubble.bake_cloud_texture_async(_on_cloud_bake_finished)
 
 
-func _on_thought_cloud_baked(img: Image) -> void:
-	_thought_bakes_pending = maxi(_thought_bakes_pending - 1, 0)
+func _on_cloud_bake_finished(img: Image) -> void:
+	_cloud_bakes_pending = maxi(_cloud_bakes_pending - 1, 0)
 	if not is_inside_tree():
 		return
-	if _thought_bubbles.size() >= _active_thought_cap():
-		return
+	_ready_clouds.append(img)
 
-	var text := ThoughtSubjects.random_text()
+
+func _spawn_thought(img: Image) -> void:
+	var subject_index := ThoughtSubjects.random_index()
+	var text := ThoughtSubjects.text_at(subject_index)
 	var cloud_tex := ImageTexture.create_from_image(img)
 	var bubble := ThoughtBubble.new()
 	_thought_layer.add_child(bubble)
 
 	var cloud_top_left := _pick_thought_local_position()
 	var anchor_layer := _thought_layer.get_global_transform_with_canvas().affine_inverse() * _breathing.get_head_global_position()
-	bubble.configure(text, cloud_top_left, anchor_layer, cloud_tex)
+	bubble.configure(subject_index, text, cloud_top_left, anchor_layer, cloud_tex)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))
-	bubble.mouse_exited.connect(_on_thought_mouse_exited.bind(bubble))
+	bubble.reveal_finished.connect(_on_thought_revealed)
 
 	_thought_bubbles.append(bubble)
+	_sync_thought_stack_order()
+	_update_thought_visuals()
+
+
+func _on_thought_revealed() -> void:
 	_sync_thought_stack_order()
 	_sync_breath_button_lock()
 
@@ -114,7 +142,7 @@ func _on_thought_cloud_baked(img: Image) -> void:
 func _update_thought_hold(delta: float) -> void:
 	if _holding_panel == null:
 		return
-	if not is_instance_valid(_holding_panel) or _holding_panel != _oldest_thought_panel():
+	if _holding_panel != _oldest_thought_panel():
 		_clear_thought_hold()
 		return
 	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -129,8 +157,6 @@ func _update_thought_hold(delta: float) -> void:
 func _update_thought_visuals() -> void:
 	var oldest := _oldest_thought_panel()
 	for bubble in _thought_bubbles:
-		if bubble == null or not is_instance_valid(bubble):
-			continue
 		var rgb := 1.0 if bubble == oldest else _THOUGHT_INACTIVE_GRAY
 		var target_a := 1.0
 		if bubble == _holding_panel and thought_hold_to_clear_sec > 0.001:
@@ -149,10 +175,9 @@ func _sync_thought_stack_order() -> void:
 	var count := _thought_bubbles.size()
 	for i in count:
 		var bubble := _thought_bubbles[i]
-		if bubble == null or not is_instance_valid(bubble):
-			continue
 		bubble.z_index = count - i
-		bubble.mouse_filter = Control.MOUSE_FILTER_STOP if i == 0 else Control.MOUSE_FILTER_IGNORE
+		var interactive := i == 0 and bubble.is_cloud_revealed()
+		bubble.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 
 
 func _clear_thought_hold() -> void:
@@ -182,8 +207,6 @@ func _pick_thought_local_position() -> Vector2:
 		)
 		var min_sep := INF
 		for bubble in _thought_bubbles:
-			if bubble == null or not is_instance_valid(bubble):
-				continue
 			min_sep = minf(min_sep, local_pos.distance_to(bubble.position))
 		if min_sep >= thought_min_separation:
 			return local_pos
@@ -207,11 +230,6 @@ func _on_thought_input(event: InputEvent, bubble: ThoughtBubble) -> void:
 	else:
 		_clear_thought_hold()
 	get_viewport().set_input_as_handled()
-
-
-func _on_thought_mouse_exited(bubble: ThoughtBubble) -> void:
-	if bubble == _holding_panel:
-		_clear_thought_hold()
 
 
 func _dismiss_thought(bubble: ThoughtBubble) -> void:

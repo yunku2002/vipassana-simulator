@@ -145,6 +145,6 @@ msgstr ""
 msgid "GAUGE_LABEL"
 msgstr ""
 
-#. Thought subjects — one entry per line
+#. Thought subjects — one entry per line. Prefix with "!" for boosted weighting.
 msgid "THOUGHT_SUBJECTS"
 msgstr ""

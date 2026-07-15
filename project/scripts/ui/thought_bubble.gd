@@ -1,6 +1,8 @@
 class_name ThoughtBubble
 extends Control
 
+signal reveal_finished
+
 const _CELL_SIZE := 16.0
 const _MARGIN_CELLS := 2
 const _INNER_COLS := 9
@@ -19,16 +21,20 @@ const _TRAIL_COUNT_MAX := 4
 const _TRAIL_RADIUS_NEAR := 12.0
 const _TRAIL_RADIUS_FAR := 5.0
 const _ARC_BULGE_RATIO := 0.32
+const TRAIL_LEAD_TIME := 1.0
 const _BAKE_SCALE := 2
 const DEBUG_SHOW_CIRCLES := false
 
 static var _dot_tex_cache: Dictionary[float, ImageTexture] = {}
 static var _trail_dots_prewarmed: bool = false
 
+var subject_index: int = -1
+
 var _label: Label
 var _cloud_tex: ImageTexture
 var _trail_centers: PackedVector2Array = PackedVector2Array()
 var _trail_radii: PackedFloat32Array = PackedFloat32Array()
+var _trail_reveal_elapsed: float = 0.0
 
 
 func _init() -> void:
@@ -68,11 +74,13 @@ static func bake_cloud_texture_async(on_ready: Callable) -> void:
 
 
 func configure(
+	index: int,
 	text: String,
 	cloud_top_left_layer: Vector2,
 	anchor_layer: Vector2,
 	cloud_tex: ImageTexture
 ) -> void:
+	subject_index = index
 	_label.text = text
 	position = cloud_top_left_layer
 	size = CLOUD_SIZE
@@ -92,11 +100,45 @@ func configure(
 		var t := float(i + 1) / float(trail_count + 1)
 		_trail_centers.append(_quadratic_bezier(attach, anchor_local, t))
 		_trail_radii.append(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t))
+	_trail_reveal_elapsed = 0.0
+	_label.visible = false
+	set_process(true)
+
+
+func set_subject_text(text: String) -> void:
+	_label.text = text
+
+
+func is_cloud_revealed() -> bool:
+	return _trail_reveal_elapsed >= TRAIL_LEAD_TIME
+
+
+func _reveal_step() -> float:
+	return TRAIL_LEAD_TIME / float(_trail_centers.size())
+
+
+func _process(delta: float) -> void:
+	_trail_reveal_elapsed = minf(_trail_reveal_elapsed + delta, TRAIL_LEAD_TIME)
+	queue_redraw()
+	if not is_cloud_revealed():
+		return
+	_label.visible = true
+	set_process(false)
+	reveal_finished.emit()
+
+
+func _trail_dot_reveal_time(index: int) -> float:
+	var count := _trail_centers.size()
+	return _reveal_step() * float(count - 1 - index)
 
 
 func _draw() -> void:
 	for i in _trail_centers.size():
+		if _trail_reveal_elapsed < _trail_dot_reveal_time(i):
+			continue
 		_draw_trail_dot(_trail_centers[i], _trail_radii[i])
+	if not is_cloud_revealed():
+		return
 	draw_texture_rect(_cloud_tex, Rect2(Vector2.ZERO, CLOUD_SIZE), false)
 
 
