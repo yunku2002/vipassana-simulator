@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
 [ext_resource type="Script" uid="uid://bc0sldxvpsdsg" path="res://scripts/anapana_1.gd" id="2_script"]
 [ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
+[ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="4_gauge"]
 
 [node name="Anapana1" unique_id=1454617430 instance=ExtResource("1_shell")]
 script = ExtResource("2_script")
@@ -51,28 +52,5 @@ mouse_filter = 2
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="GaugeBox" type="VBoxContainer" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=397170209]
+[node name="GaugeBox" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=397170209 instance=ExtResource("4_gauge")]
 layout_mode = 1
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -88.0
-grow_horizontal = 0
-grow_vertical = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="GaugeLabel" type="Label" parent="Margin/Body/GaugeBox" index="0" unique_id=591594467]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "Awareness"
-horizontal_alignment = 1
-
-[node name="Gauge" type="ProgressBar" parent="Margin/Body/GaugeBox" index="1" unique_id=390416789]
-custom_minimum_size = Vector2(44, 420)
-layout_mode = 2
-size_flags_horizontal = 4
-size_flags_vertical = 3
-fill_mode = 3
-show_percentage = false

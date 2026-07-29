@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dalkpjvsu5xkg"
-path="res://.godot/imported/sitting.png-0fe1d006766a76d1e62ebc9d5cfe5a47.ctex"
+uid="uid://c8fg0t5x3g53f"
+path="res://.godot/imported/mask_nostrils.png-c2b796710cbd92d6d49062c2d0e199f4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sitting.png"
-dest_files=["res://.godot/imported/sitting.png-0fe1d006766a76d1e62ebc9d5cfe5a47.ctex"]
+source_file="res://assets/mask_nostrils.png"
+dest_files=["res://.godot/imported/mask_nostrils.png-c2b796710cbd92d6d49062c2d0e199f4.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

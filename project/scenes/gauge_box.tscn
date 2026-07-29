@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://cgaugebox01"]
+
+[node name="GaugeBox" type="VBoxContainer" unique_id=2081538653]
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -88.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="GaugeLabel" type="Label" parent="." unique_id=651684510]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Awareness"
+horizontal_alignment = 1
+
+[node name="Gauge" type="ProgressBar" parent="." unique_id=1501958591]
+custom_minimum_size = Vector2(44, 420)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 3
+fill_mode = 3
+show_percentage = false

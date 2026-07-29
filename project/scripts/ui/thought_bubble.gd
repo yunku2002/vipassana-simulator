@@ -12,12 +12,10 @@ const CLOUD_SIZE := Vector2(
 	(_INNER_ROWS + _MARGIN_CELLS * 2) * _CELL_SIZE
 )
 
-const _FILL := Color(0.99, 0.99, 0.99, 1.0)
+const _FILL := Color(0.97, 0.96, 0.94, 1.0)
 const _STROKE := Color(0.38, 0.38, 0.38, 1.0)
 const _AA := 1.0
 const _STROKE_W := 2.0
-const _TRAIL_COUNT_MIN := 2
-const _TRAIL_COUNT_MAX := 4
 const _TRAIL_RADIUS_NEAR := 12.0
 const _TRAIL_RADIUS_FAR := 5.0
 const _ARC_BULGE_RATIO := 0.32
@@ -26,7 +24,7 @@ const _BAKE_SCALE := 2
 const DEBUG_SHOW_CIRCLES := false
 
 static var _dot_tex_cache: Dictionary[float, ImageTexture] = {}
-static var _trail_dots_prewarmed: bool = false
+static var _trail_dots_prewarmed: Dictionary = {}
 
 var subject_index: int = -1
 
@@ -53,14 +51,49 @@ func _init() -> void:
 	add_child(_label)
 
 
+## Per-axis half-extent for random cloud centers over a spawn zone.
+static func spawn_spread(zone_size: Vector2) -> Vector2:
+	return Vector2(
+		_spawn_spread_axis(zone_size.x, CLOUD_SIZE.x),
+		_spawn_spread_axis(zone_size.y, CLOUD_SIZE.y)
+	)
+
+
+static func _spawn_spread_axis(region: float, bubble: float) -> float:
+	if region < bubble:
+		return region * 0.4
+	return maxf(0.5 * bubble - 0.2 * region, 0.3 * region - 0.5 * bubble)
+
+
+## One random top-left in thought_layer coords, using spawn_spread around zone_global.
+static func random_top_left_in_zone(zone_global: Rect2, thought_layer: Control) -> Vector2:
+	var spread := spawn_spread(zone_global.size)
+	var center := zone_global.position + zone_global.size * 0.5
+	var cloud_center_global := Vector2(
+		randf_range(center.x - spread.x, center.x + spread.x),
+		randf_range(center.y - spread.y, center.y + spread.y)
+	)
+	var local_pos := (
+		thought_layer.get_global_transform_with_canvas().affine_inverse()
+		* (cloud_center_global - CLOUD_SIZE * 0.5)
+	)
+	var max_pos := (thought_layer.size - CLOUD_SIZE).max(Vector2.ZERO)
+	return Vector2(
+		clampf(local_pos.x, 0.0, max_pos.x),
+		clampf(local_pos.y, 0.0, max_pos.y)
+	)
+
+
 static func prewarm_trail_dots() -> void:
-	if _trail_dots_prewarmed:
+	# Prewarm only the minimum trail dot layout; other counts bake on-demand and are cached by radius.
+	var key := "2"
+	if _trail_dots_prewarmed.get(key, false):
 		return
-	for count in range(_TRAIL_COUNT_MIN, _TRAIL_COUNT_MAX + 1):
-		for i in count:
-			var t := float(i + 1) / float(count + 1)
-			_dot_texture(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t))
-	_trail_dots_prewarmed = true
+	var count := 2
+	for i in count:
+		var t := float(i + 1) / float(count + 1)
+		_dot_texture(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t))
+	_trail_dots_prewarmed[key] = true
 
 
 static func bake_cloud_texture_async(on_ready: Callable) -> void:
@@ -88,12 +121,9 @@ func configure(
 	_cloud_tex = cloud_tex
 
 	var anchor_local := anchor_layer - cloud_top_left_layer
-	var attach := Vector2(CLOUD_SIZE.x * 0.5, CLOUD_SIZE.y * 0.9)
-	var trail_count := clampi(
-		ceili((attach.distance_to(anchor_local) - 50.0) / 30.0),
-		_TRAIL_COUNT_MIN,
-		_TRAIL_COUNT_MAX
-	)
+	var attach := _attach_point_toward(anchor_local)
+	# Dynamic trail length, but always at least 2 dots.
+	var trail_count := maxi(floori((attach.distance_to(anchor_local) ** 0.8) * 0.08), 2)
 	_trail_centers.clear()
 	_trail_radii = PackedFloat32Array()
 	for i in trail_count:
@@ -201,10 +231,30 @@ func _quadratic_bezier(start: Vector2, end: Vector2, t: float) -> Vector2:
 		return start.lerp(end, t)
 	var mid := start + chord * 0.5
 	var perp := Vector2(-chord.y, chord.x).normalized()
-	var side := 1.0 if start.x < end.x else -1.0
+	## Vertical trail → bulge from left/right; horizontal trail → from above/below.
+	var side: float
+	if absf(chord.y) >= absf(chord.x):
+		side = 1.0 if start.x < end.x else -1.0
+	else:
+		side = 1.0 if start.y < end.y else -1.0
 	var control := mid + perp * chord.length() * _ARC_BULGE_RATIO * side
 	var u := 1.0 - t
 	return u * u * start + 2.0 * u * t * control + t * t * end
+
+
+## Pick the cloud-edge attach point facing the anchor (left / right / top / bottom).
+static func _attach_point_toward(anchor_local: Vector2) -> Vector2:
+	var center := CLOUD_SIZE * 0.5
+	var to_anchor := anchor_local - center
+	const EDGE := 0.9
+	const INNER := 1.0 - EDGE
+	if absf(to_anchor.x) >= absf(to_anchor.y):
+		if to_anchor.x >= 0.0:
+			return Vector2(CLOUD_SIZE.x * EDGE, center.y)
+		return Vector2(CLOUD_SIZE.x * INNER, center.y)
+	if to_anchor.y >= 0.0:
+		return Vector2(center.x, CLOUD_SIZE.y * EDGE)
+	return Vector2(center.x, CLOUD_SIZE.y * INNER)
 
 
 static func _circle_sdf(p: Vector2, center: Vector2, radius: float) -> float:

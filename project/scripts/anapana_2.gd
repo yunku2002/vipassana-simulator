@@ -186,25 +186,11 @@ func _clear_thought_hold() -> void:
 
 
 func _pick_thought_local_position() -> Vector2:
-	var bubble_size := ThoughtBubble.CLOUD_SIZE
-	var button_zone := _btn_in.get_global_rect().merge(_btn_out.get_global_rect())
-	var spread_x := (button_zone.size.x - bubble_size.x) * 0.5
-	var spread_y := button_zone.size.y * 0.4
-	var center := button_zone.position + button_zone.size * 0.5
-	var layer_from_global := _thought_layer.get_global_transform_with_canvas().affine_inverse()
-	var max_pos := (_thought_layer.size - bubble_size).max(Vector2.ZERO)
+	var zone := _btn_in.get_global_rect().merge(_btn_out.get_global_rect())
 	var best_pos := Vector2.ZERO
 	var best_sep := -1.0
 	for attempt in _THOUGHT_PLACEMENT_ATTEMPTS:
-		var cloud_center_global := Vector2(
-			randf_range(center.x - spread_x, center.x + spread_x),
-			randf_range(center.y - spread_y, center.y + spread_y)
-		)
-		var local_pos := layer_from_global * (cloud_center_global - bubble_size * 0.5)
-		local_pos = Vector2(
-			clampf(local_pos.x, 0.0, max_pos.x),
-			clampf(local_pos.y, 0.0, max_pos.y)
-		)
+		var local_pos := ThoughtBubble.random_top_left_in_zone(zone, _thought_layer)
 		var min_sep := INF
 		for bubble in _thought_bubbles:
 			min_sep = minf(min_sep, local_pos.distance_to(bubble.position))

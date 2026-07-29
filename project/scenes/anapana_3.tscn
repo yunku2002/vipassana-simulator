@@ -1,0 +1,57 @@
+[gd_scene format=3 uid="uid://fanapana003"]
+
+[ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
+[ext_resource type="Script" uid="uid://byk4xrwgllp3o" path="res://scripts/anapana_3.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
+[ext_resource type="PackedScene" uid="uid://csensfocus01" path="res://scenes/sensation_focus.tscn" id="4_focus"]
+[ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="5_gauge"]
+
+[node name="Anapana3" unique_id=375004381 instance=ExtResource("1_shell")]
+script = ExtResource("2_script")
+gauge_fill_on_hit = 10.0
+gauge_drain_per_sec = 3.0
+sensation_interval_min = 1.2
+sensation_interval_max = 2.4
+sensation_duration_min = 1.0
+sensation_duration_max = 2.0
+thought_interval_min = 4.0
+thought_interval_max = 8.0
+thought_hold_to_clear_sec = 0.75
+stage_scene_path = "res://scenes/anapana_3.tscn"
+intro_prefix = "STAGE_ANAPANA_3"
+
+[node name="CornerFigure" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="1" unique_id=1966009414 instance=ExtResource("3_figure")]
+custom_minimum_size = Vector2(307.2, 307.2)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -323.2
+offset_right = 315.2
+offset_bottom = -16.0
+grow_vertical = 0
+rig_display_scale = 0.3
+
+[node name="SensationFocus" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1700999544 instance=ExtResource("4_focus")]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="GaugeBox" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="3" unique_id=986152068 instance=ExtResource("5_gauge")]
+layout_mode = 1
+
+[node name="ThoughtLayer" type="Control" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="4" unique_id=1614511186]
+z_index = 5
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

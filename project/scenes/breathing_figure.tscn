@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://3cfrf6evq8k3"]
 
 [ext_resource type="Script" uid="uid://lf8u3da4rilc" path="res://scripts/breathing_figure.gd" id="1_figure"]
-[ext_resource type="Texture2D" uid="uid://dalkpjvsu5xkg" path="res://assets/sitting.png" id="2_tex"]
 [ext_resource type="Script" uid="uid://cdrmwej1pllxs" path="res://scripts/ui/chevron_scroll_indicator.gd" id="3_chevron"]
 [ext_resource type="Script" uid="uid://dv0k8grgcirqa" path="res://scripts/breathing_rig.gd" id="4_breathing"]
 
@@ -34,7 +33,6 @@ bone_angle = -90.0
 
 [node name="BodyMesh" type="Polygon2D" parent="RigRoot" unique_id=2047912528]
 texture_filter = 4
-texture = ExtResource("2_tex")
 skeleton = NodePath("../Skeleton")
 polygon = PackedVector2Array(0, 0, 0, 330, 0, 380, 0, 630, 0, 1024, 1024, 1024, 1024, 630, 1024, 380, 1024, 330, 1024, 0)
 uv = PackedVector2Array(0, 0, 0, 330, 0, 380, 0, 630, 0, 1024, 1024, 1024, 1024, 630, 1024, 380, 1024, 330, 1024, 0)

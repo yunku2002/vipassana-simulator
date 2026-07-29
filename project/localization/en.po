@@ -123,7 +123,18 @@ msgstr ""
 "but with practice random thoughts decrease in frequency."
 
 msgid "STAGE_ANAPANA_3_GOAL"
-msgstr "Observe the sensations around the nostrils and the upper lip."
+msgstr "Observe the sensations caused by your breath."
+
+msgid "STAGE_ANAPANA_3_INSTRUCTIONS"
+msgstr "You now begin to focus on sensations. When a sensation appears, observe it by pressing the area before it fades away."
+
+msgid "STAGE_ANAPANA_3_BACKGROUND"
+msgstr ""
+"Now that you can keep your focus on your breathing, "
+"you move your attention onto the area around the nostrils and the upper lip. "
+"There, observe the sensations caused by your natural breath. "
+"Breathing in and breathing out, it is bound to leave impressions. "
+"You may be surprised to feel sensations that you had forgotten were there or hadn't noticed before."
 
 msgid "STAGE_ANAPANA_4_GOAL"
 msgstr "Observe the subtler sensations on the narrower area: the philtrum."

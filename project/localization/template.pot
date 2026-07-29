@@ -112,6 +112,12 @@ msgstr ""
 msgid "STAGE_ANAPANA_3_GOAL"
 msgstr ""
 
+msgid "STAGE_ANAPANA_3_INSTRUCTIONS"
+msgstr ""
+
+msgid "STAGE_ANAPANA_3_BACKGROUND"
+msgstr ""
+
 msgid "STAGE_ANAPANA_4_GOAL"
 msgstr ""
 
