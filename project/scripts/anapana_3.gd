@@ -1,3 +1,4 @@
+class_name Anapana3
 extends StageShell
 
 @export_group("Gauge")
@@ -5,10 +6,15 @@ extends StageShell
 @export var gauge_drain_per_sec: float
 
 @export_group("Sensations")
+@export_file("*.png") var dim_mask_path: String = "res://assets/mask_nostrils.png"
 @export var sensation_interval_min: float
 @export var sensation_interval_max: float
 @export var sensation_duration_min: float
 @export var sensation_duration_max: float
+@export var max_active_sensations: int = 3
+## Circle radius in sitting.svg design pixels.
+@export var region_radius_min: float
+@export var region_radius_max: float
 
 @export_group("Thoughts")
 @export var thought_interval_min: float
@@ -25,7 +31,8 @@ const _CLOUD_READY_TARGET := 1
 
 var _gauge_value: float = 0.0
 var _sensation_timer: float = 0.0
-var _active_sensations_left: Array[float] = []
+## region_id -> time remaining
+var _active_sensations: Dictionary = {}
 
 var _thought_timer: float = 0.0
 var _ready_clouds: Array[Image] = []
@@ -35,13 +42,15 @@ var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
 
 
+func _enter_tree() -> void:
+	$Margin/Body/SensationFocus.configure(dim_mask_path, region_radius_min, region_radius_max)
+
+
 func _ready() -> void:
 	_gauge_bar.value = _gauge_value
 	_thought_timer = randf_range(thought_interval_min, thought_interval_max)
 	_sensation_timer = randf_range(sensation_interval_min, sensation_interval_max)
-	_active_sensations_left.clear()
-	for _i in SensationFocus.region_layout.size():
-		_active_sensations_left.append(0.0)
+	_active_sensations.clear()
 	ThoughtBubble.prewarm_trail_dots()
 	_ensure_cloud_ready()
 	_corner.get_rig().show_chevrons = false
@@ -99,45 +108,35 @@ func _update_gauge(delta: float) -> void:
 
 
 func _update_sensations(delta: float) -> void:
-	# Decrement all active regions independently.
-	for i in _active_sensations_left.size():
-		var left := _active_sensations_left[i] - delta
+	var expired: Array[int] = []
+	for region_id in _active_sensations.keys():
+		var left: float = float(_active_sensations[region_id]) - delta
 		if left <= 0.0:
-			_active_sensations_left[i] = 0.0
-			_focus.clear_region(i)
+			expired.append(region_id)
 		else:
-			_active_sensations_left[i] = left
+			_active_sensations[region_id] = left
+	for region_id in expired:
+		_active_sensations.erase(region_id)
+		_focus.clear_region(region_id)
 
-	# Spawn new lit regions on a separate timer (whack-a-mole style).
 	_sensation_timer -= delta
-	var spawned := 0
-	while _sensation_timer <= 0.0 and spawned < 3:
-		# Prefer inactive regions to avoid re-lighting the same one.
-		var inactive: Array[int] = []
-		for i in _active_sensations_left.size():
-			if _active_sensations_left[i] <= 0.0:
-				inactive.append(i)
-		var index := (
-			inactive[randi() % inactive.size()] if not inactive.is_empty()
-			else randi() % SensationFocus.region_layout.size()
-		)
-		_focus.activate_region(index)
-		_active_sensations_left[index] = randf_range(sensation_duration_min, sensation_duration_max)
-		spawned += 1
+	while _sensation_timer <= 0.0 and _active_sensations.size() < max_active_sensations:
+		var region_id := _focus.spawn_region()
 		_sensation_timer = randf_range(sensation_interval_min, sensation_interval_max)
+		if region_id < 0:
+			break
+		_active_sensations[region_id] = randf_range(sensation_duration_min, sensation_duration_max)
 
 
-func _on_region_pressed(region_index: int) -> void:
+func _on_region_pressed(region_id: int) -> void:
 	if is_gameplay_blocked():
 		return
 	if _has_revealed_thought():
 		return
-	if region_index < 0 or region_index >= _active_sensations_left.size():
+	if not _active_sensations.has(region_id):
 		return
-	if _active_sensations_left[region_index] <= 0.0:
-		return
-	_active_sensations_left[region_index] = 0.0
-	_focus.play_success_burst(region_index)
+	_active_sensations.erase(region_id)
+	_focus.play_success_burst(region_id)
 	_gauge_value = minf(100.0, _gauge_value + gauge_fill_on_hit)
 	_gauge_bar.value = _gauge_value
 

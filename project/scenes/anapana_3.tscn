@@ -8,15 +8,19 @@
 
 [node name="Anapana3" unique_id=375004381 instance=ExtResource("1_shell")]
 script = ExtResource("2_script")
-gauge_fill_on_hit = 10.0
+gauge_fill_on_hit = 8.0
 gauge_drain_per_sec = 3.0
-sensation_interval_min = 1.2
-sensation_interval_max = 2.4
+dim_mask_path = "res://assets/mask_nostrils.png"
+sensation_interval_min = 0.2
+sensation_interval_max = 2.5
 sensation_duration_min = 1.0
 sensation_duration_max = 2.0
-thought_interval_min = 4.0
-thought_interval_max = 8.0
-thought_hold_to_clear_sec = 0.75
+max_active_sensations = 3
+region_radius_min = 6.5
+region_radius_max = 7.5
+thought_interval_min = 5.0
+thought_interval_max = 10.0
+thought_hold_to_clear_sec = 0.5
 stage_scene_path = "res://scenes/anapana_3.tscn"
 intro_prefix = "STAGE_ANAPANA_3"
 

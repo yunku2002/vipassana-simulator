@@ -1,13 +1,15 @@
 class_name SensationFocus
 extends Control
 
-## Zoomed head crop with a darkened surround and interactive sensation regions.
+## Zoomed head crop with a darkened surround and dynamically spawned sensation circles.
 
-signal region_activated(region_index: int)
-signal region_expired(region_index: int)
-signal region_pressed(region_index: int)
+const _SvgPath := preload("res://scripts/svg_path.gd")
 
-## Square head crop in design pixels (sitting.svg / mouth.svg; mask is 1024² PNG).
+signal region_activated(region_id: int)
+signal region_expired(region_id: int)
+signal region_pressed(region_id: int)
+
+## Square head crop in design pixels (sitting.svg / mouth.svg; mask is 1024²).
 const HEAD_SIZE := 256.0
 const HEAD_ATLAS := Rect2(512.0 - HEAD_SIZE * 0.5, 345.0 - HEAD_SIZE, HEAD_SIZE, HEAD_SIZE)
 ## On-screen size of the head crop (1:1 with the cropped raster).
@@ -17,9 +19,9 @@ const BOTTOM_OVERFLOW := 24.0
 
 const _REGION_IDLE := Color(1.0, 1.0, 1.0, 0.0)
 const _REGION_ACTIVE := Color(1.0, 0.88, 0.15, 0.55)
-## Soft edge as a fraction of the ellipse radius (0 = hard, ~0.25 = soft).
+## Soft edge as a fraction of the circle radius (0 = hard, ~0.25 = soft).
 const _REGION_FEATHER := 0.28
-const _MARK_FONT_SIZE := 36
+const _SPAWN_ATTEMPTS := 24
 
 const _REGION_SHADER := """
 shader_type canvas_item;
@@ -36,27 +38,27 @@ void fragment() {
 @onready var _head: TextureRect = $HeadTexture
 @onready var _dim: TextureRect = $DimOverlay
 
-var _regions: Array[ColorRect] = []
-var _region_material: ShaderMaterial
-var _region_active: Array[bool] = []
-var _region_busy: Array[bool] = []
-var _marks: Array[Label] = []
-var _input_blocked: bool = false
+var _dim_mask_path: String = ""
+var _region_radius_min: float
+var _region_radius_max: float
 
-## Rotated ellipses in sitting.svg design space (1024²). Add/remove entries freely.
-## Inkscape: radii/center from Object Properties; deg from Select tool R (or Transform).
-##   cx, cy = center; rx, ry = radii; deg = rotation degrees
-static var region_layout: Array[Dictionary] = [
-	{"cx": 505.25, "cy": 259.50, "rx": 8.00, "ry": 7.50, "deg": -20},
-	{"cx": 518.75, "cy": 259.50, "rx": 8.00, "ry": 7.50, "deg": 20},
-	{"cx": 498.00, "cy": 269.75, "rx": 8.75, "ry": 7.25, "deg": 20},
-	{"cx": 512.00, "cy": 270.25, "rx": 8.25, "ry": 7.75, "deg": 0},
-	{"cx": 526.00, "cy": 269.75, "rx": 8.75, "ry": 7.25, "deg": -20},
-	{"cx": 494.50, "cy": 279.50, "rx": 6.75, "ry": 6.25, "deg": 15},
-	{"cx": 506.00, "cy": 280.25, "rx": 7.00, "ry": 6.25, "deg": 0},
-	{"cx": 518.00, "cy": 280.25, "rx": 7.00, "ry": 6.25, "deg": 0},
-	{"cx": 529.50, "cy": 279.50, "rx": 6.75, "ry": 6.25, "deg": -15},
-]
+var _region_material: ShaderMaterial
+var _input_blocked: bool = false
+var _next_region_id: int = 1
+
+## Vector outline of the focus hole (smallest closed subpath in the mask SVG).
+var _hole_poly: PackedVector2Array = PackedVector2Array()
+var _hole_ready: bool = false
+var _interest_bounds: Rect2 = Rect2()
+
+## id -> {holder, rect, mark, center: Vector2, radius: float, busy: bool}
+var _regions: Dictionary = {}
+
+
+func configure(mask_path: String, radius_min: float, radius_max: float) -> void:
+	_dim_mask_path = mask_path
+	_region_radius_min = radius_min
+	_region_radius_max = radius_max
 
 
 func _ready() -> void:
@@ -68,27 +70,77 @@ func _ready() -> void:
 	offset_top = BOTTOM_OVERFLOW - DISPLAY_SIZE.y
 	_region_material = _make_region_material()
 	_setup_textures()
-	_build_regions()
 	resized.connect(_layout_focus)
 	_layout_focus()
 
 
-func is_awaiting_press() -> bool:
-	for i in _regions.size():
-		if i >= _region_active.size():
-			break
-		if _region_active[i] and not _region_busy[i]:
-			return true
-	return false
+## Cached atlas glyph, centered by texture box in the mark control.
+class _GlyphMark extends Control:
+	## Vector2i(font_size, code) -> Texture2D
+	static var _cache: Dictionary = {}
 
+	var text: String = ""
+	var font_size: int = 16
+	var _tex: Texture2D
 
-func is_resolving() -> bool:
-	for i in _regions.size():
-		if i >= _region_busy.size():
-			break
-		if _region_busy[i]:
-			return true
-	return false
+	func set_mark(p_text: String, p_font_size: int) -> void:
+		text = p_text
+		font_size = p_font_size
+		_tex = null
+		if not text.is_empty():
+			var font := get_theme_font("font", "Label")
+			if font == null:
+				font = ThemeDB.fallback_font
+			if font != null:
+				_tex = _texture_for(font, font_size, text.unicode_at(0))
+		queue_redraw()
+
+	func _draw() -> void:
+		if _tex == null:
+			return
+		var color := get_theme_color("font_color", "Label")
+		var tex_size := Vector2(_tex.get_width(), _tex.get_height())
+		draw_texture_rect(_tex, Rect2((size - tex_size) * 0.5, tex_size), false, color)
+
+	static func _texture_for(font: Font, p_font_size: int, code: int) -> Texture2D:
+		var key := Vector2i(p_font_size, code)
+		if _cache.has(key):
+			return _cache[key]
+		var tex := _bake(font, p_font_size, code)
+		if tex != null:
+			_cache[key] = tex
+		return tex
+
+	static func _bake(font: Font, p_font_size: int, code: int) -> Texture2D:
+		font.get_char_size(code, p_font_size)
+		var font_file := font as FontFile
+		if font_file == null and font is FontVariation:
+			font_file = (font as FontVariation).base_font as FontFile
+		if font_file == null:
+			return null
+		var glyph := font_file.get_glyph_index(p_font_size, code, 0)
+		var sized := Vector2i(p_font_size, 0)
+		var tex_idx := font_file.get_glyph_texture_idx(0, sized, glyph)
+		if tex_idx < 0:
+			return null
+		var uv := font_file.get_glyph_uv_rect(0, sized, glyph)
+		var atlas := font_file.get_texture_image(0, sized, tex_idx)
+		if atlas == null or uv.size.x < 1.0 or uv.size.y < 1.0:
+			return null
+		## Don't convert the font's live atlas in place — that breaks its ImageTexture format.
+		atlas = atlas.duplicate()
+		if atlas.get_format() != Image.FORMAT_RGBA8:
+			atlas.convert(Image.FORMAT_RGBA8)
+		var x0 := clampi(int(floor(uv.position.x)), 0, atlas.get_width() - 1)
+		var y0 := clampi(int(floor(uv.position.y)), 0, atlas.get_height() - 1)
+		var x1 := clampi(int(ceil(uv.position.x + uv.size.x)), 0, atlas.get_width())
+		var y1 := clampi(int(ceil(uv.position.y + uv.size.y)), 0, atlas.get_height())
+		var gw := maxi(x1 - x0, 1)
+		var gh := maxi(y1 - y0, 1)
+		var glyph_img := Image.create(gw, gh, false, Image.FORMAT_RGBA8)
+		glyph_img.fill(Color(0, 0, 0, 0))
+		glyph_img.blit_rect(atlas, Rect2i(x0, y0, gw, gh), Vector2i.ZERO)
+		return ImageTexture.create_from_image(glyph_img)
 
 
 func set_input_blocked(blocked: bool) -> void:
@@ -96,73 +148,110 @@ func set_input_blocked(blocked: bool) -> void:
 	_sync_region_input()
 
 
-func activate_region(index: int) -> void:
-	if index < 0 or index >= _regions.size():
-		return
-	_region_active[index] = true
-	_region_busy[index] = false
-	_regions[index].color = _REGION_ACTIVE
-	var mark := _marks[index]
-	mark.text = "?"
+## Spawns a circle inside the mask hole. Returns region id, or -1 on failure.
+func spawn_region() -> int:
+	var pick := _pick_circle()
+	if pick.is_empty():
+		return -1
+	var id := _next_region_id
+	_next_region_id += 1
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var rect := ColorRect.new()
+	rect.color = _REGION_ACTIVE
+	rect.material = _region_material
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.gui_input.connect(_on_region_input.bind(id))
+	var mark := _GlyphMark.new()
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mark.modulate = Color.WHITE
 	mark.scale = Vector2.ONE
-	mark.visible = true
-	# Keep the mark centered on the ellipse pivot without rotating it with the ellipse.
-	var region := _regions[index]
-	mark.size = region.size
-	mark.pivot_offset = region.pivot_offset
-	mark.position = region.position
+	mark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mark.set_mark("?", 16)
+	holder.add_child(rect)
+	holder.add_child(mark)
+	add_child(holder)
+	_regions[id] = {
+		"holder": holder,
+		"rect": rect,
+		"mark": mark,
+		"center": pick.center,
+		"radius": pick.radius,
+		"busy": false,
+	}
+	_layout_region(id)
 	_sync_region_input()
-	region_activated.emit(index)
+	region_activated.emit(id)
+	return id
 
 
-func clear_region(index: int) -> void:
-	if index < 0 or index >= _regions.size():
+func clear_region(region_id: int) -> void:
+	if not _regions.has(region_id):
 		return
-	if _region_busy.size() > 0 and _region_busy[index]:
+	var data: Dictionary = _regions[region_id]
+	if data.busy:
 		# Let the success burst animation complete.
 		return
-	if not _region_active[index]:
-		return
-	_region_active[index] = false
-	_regions[index].color = _REGION_IDLE
-	var mark := _marks[index]
-	mark.visible = false
-	mark.scale = Vector2.ONE
-	mark.modulate = Color.WHITE
-	mark.text = "?"
-	_sync_region_input()
-	region_expired.emit(index)
+	_free_region(region_id)
+	region_expired.emit(region_id)
 
 
-func play_success_burst(index: int) -> void:
-	if index < 0 or index >= _regions.size():
+func play_success_burst(region_id: int) -> void:
+	if not _regions.has(region_id):
 		return
-	if not _region_active[index] or _region_busy[index]:
+	var data: Dictionary = _regions[region_id]
+	if data.busy:
 		return
-	_region_busy[index] = true
+	data.busy = true
 	_sync_region_input()
-	var mark := _marks[index]
-	mark.text = "!"
+	var mark: _GlyphMark = data.mark
+	mark.set_mark("!", mark.font_size)
+	_layout_region(region_id)
+	mark.pivot_offset = mark.size * 0.5
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(mark, "scale", Vector2(2.4, 2.4), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(mark, "modulate:a", 0.0, 0.45)
 	tween.set_parallel(false)
-	tween.tween_callback(_finish_success_burst.bind(index))
+	tween.tween_callback(_finish_success_burst.bind(region_id))
 
 
-func _finish_success_burst(index: int) -> void:
-	if index < 0 or index >= _regions.size():
+func _finish_success_burst(region_id: int) -> void:
+	if not _regions.has(region_id):
 		return
-	_region_active[index] = false
-	_region_busy[index] = false
-	_regions[index].color = _REGION_IDLE
-	var mark := _marks[index]
-	mark.visible = false
-	mark.scale = Vector2.ONE
-	mark.modulate = Color.WHITE
-	mark.text = "?"
+	_free_region(region_id)
+
+
+## Axis-aligned bounds of the focus hole, in global (canvas) space.
+func get_regions_global_rect() -> Rect2:
+	if not _hole_ready or size.x < 1.0:
+		return get_global_rect()
+	var min_p := _design_to_view(_interest_bounds.position)
+	var max_p := _design_to_view(_interest_bounds.position + _interest_bounds.size)
+	var xform := get_global_transform_with_canvas()
+	var corners: Array[Vector2] = [
+		xform * min_p,
+		xform * Vector2(max_p.x, min_p.y),
+		xform * max_p,
+		xform * Vector2(min_p.x, max_p.y),
+	]
+	var g_min := corners[0]
+	var g_max := corners[0]
+	for c in corners:
+		g_min = g_min.min(c)
+		g_max = g_max.max(c)
+	return Rect2(g_min, g_max - g_min)
+
+
+func _free_region(region_id: int) -> void:
+	if not _regions.has(region_id):
+		return
+	var data: Dictionary = _regions[region_id]
+	var holder: Control = data.holder
+	_regions.erase(region_id)
+	if is_instance_valid(holder):
+		holder.queue_free()
 	_sync_region_input()
 
 
@@ -177,17 +266,13 @@ func _setup_textures() -> void:
 	_clip_dim_to_head(dim, head)
 	_configure_texture_rect(_head, ImageTexture.create_from_image(head))
 	_configure_texture_rect(_dim, ImageTexture.create_from_image(dim))
+	_build_interest_field()
 
 
 func _load_dim_mask() -> Image:
-	## mask_nostrils.png is 1024² (same space as sitting.svg); crop + scale like the head SVG.
-	var tex := load("res://assets/mask_nostrils.png") as Texture2D
-	if tex == null:
-		push_error("Failed to load mask_nostrils.png")
-		return Image.create(int(DISPLAY_SIZE.x), int(DISPLAY_SIZE.y), false, Image.FORMAT_RGBA8)
-	var full := tex.get_image()
+	## Dim mask is 1024² (same space as sitting.svg); crop + scale like the head SVG.
+	var full := _load_mask_image(_dim_mask_path)
 	if full == null:
-		push_error("mask_nostrils.png has no CPU image data")
 		return Image.create(int(DISPLAY_SIZE.x), int(DISPLAY_SIZE.y), false, Image.FORMAT_RGBA8)
 	var crop := Rect2i(
 		int(HEAD_ATLAS.position.x),
@@ -198,6 +283,96 @@ func _load_dim_mask() -> Image:
 	var dim := full.get_region(crop)
 	dim.resize(int(DISPLAY_SIZE.x), int(DISPLAY_SIZE.y), Image.INTERPOLATE_TRILINEAR)
 	return dim
+
+
+func _load_mask_image(path: String) -> Image:
+	if path.is_empty():
+		push_error("SensationFocus mask path is empty")
+		return null
+	var tex := load(path) as Texture2D
+	if tex == null:
+		push_error("Failed to load dim mask: %s" % path)
+		return null
+	var full := tex.get_image()
+	if full == null:
+		push_error("%s has no CPU image data" % path)
+		return null
+	return full
+
+
+func _build_interest_field() -> void:
+	_hole_poly = PackedVector2Array()
+	_hole_ready = false
+	_interest_bounds = Rect2()
+	var svg_path := _hole_svg_path()
+	if svg_path.is_empty():
+		push_error("No SVG mask found for focus hole (from %s)" % _dim_mask_path)
+		return
+	var svg_text := FileAccess.get_file_as_string(svg_path)
+	if svg_text.is_empty():
+		push_error("Failed to read focus-hole SVG: %s" % svg_path)
+		return
+	var d := _SvgPath.first_path_d(svg_text)
+	if d.is_empty():
+		push_error("No path data in focus-hole SVG: %s" % svg_path)
+		return
+	var subpaths := _SvgPath.parse_closed_subpaths(d)
+	_hole_poly = _smallest_subpath(subpaths)
+	if _hole_poly.size() < 3:
+		push_error("Could not parse focus-hole subpath in: %s" % svg_path)
+		return
+	_interest_bounds = _SvgPath.bounds(_hole_poly)
+	_hole_ready = true
+
+
+func _hole_svg_path() -> String:
+	if _dim_mask_path.ends_with(".svg"):
+		return _dim_mask_path
+	if _dim_mask_path.ends_with(".png"):
+		var svg_path := "%s.svg" % _dim_mask_path.get_basename()
+		if FileAccess.file_exists(svg_path):
+			return svg_path
+	return ""
+
+
+static func _smallest_subpath(subpaths: Array[PackedVector2Array]) -> PackedVector2Array:
+	var best := PackedVector2Array()
+	var best_area := INF
+	for poly in subpaths:
+		var b := _SvgPath.bounds(poly)
+		var area := b.get_area()
+		## Skip degenerate / full-canvas dim frames.
+		if area < 1.0 or area > 1024.0 * 1024.0 * 0.5:
+			continue
+		if area < best_area:
+			best_area = area
+			best = poly
+	return best
+
+
+func _pick_circle() -> Dictionary:
+	if not _hole_ready or _interest_bounds.size == Vector2.ZERO:
+		return {}
+	var bb := _interest_bounds
+	for attempt in _SPAWN_ATTEMPTS:
+		var r := randf_range(_region_radius_min, _region_radius_max)
+		var center := Vector2(
+			randf_range(bb.position.x, bb.position.x + bb.size.x),
+			randf_range(bb.position.y, bb.position.y + bb.size.y)
+		)
+		if not _SvgPath.point_in_polygon(center, _hole_poly):
+			continue
+		if _SvgPath.inward_clearance(center, _hole_poly) < r:
+			continue
+		var blocked := false
+		for data in _regions.values():
+			if center.distance_to(data.center) < r + data.radius:
+				blocked = true
+				break
+		if blocked:
+			continue
+		return {"center": center, "radius": r}
+	return {}
 
 
 func _configure_texture_rect(rect: TextureRect, texture: Texture) -> void:
@@ -233,49 +408,13 @@ func _make_region_material() -> ShaderMaterial:
 	return mat
 
 
-func _build_regions() -> void:
-	for rect in _regions:
-		rect.queue_free()
-	_regions.clear()
-	for i in region_layout.size():
-		var rect := ColorRect.new()
-		rect.color = _REGION_IDLE
-		rect.material = _region_material
-		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		rect.gui_input.connect(_on_region_input.bind(i))
-		add_child(rect)
-		_regions.append(rect)
-	# Prepare per-region state and per-region non-rotating marks.
-	_region_active.clear()
-	_region_busy.clear()
-	for _i in _regions.size():
-		_region_active.append(false)
-		_region_busy.append(false)
-
-	for mark in _marks:
-		mark.queue_free()
-	_marks.clear()
-	for _i in _regions.size():
-		var mark := Label.new()
-		mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		mark.add_theme_font_size_override("font_size", _MARK_FONT_SIZE)
-		mark.text = "?"
-		mark.modulate = Color.WHITE
-		mark.scale = Vector2.ONE
-		mark.visible = false
-		add_child(mark)
-		_marks.append(mark)
-
-
 func _layout_focus() -> void:
 	if size.x < 1.0 or size.y < 1.0:
 		return
 	_head.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_layout_regions()
-	_layout_marks()
+	for id in _regions.keys():
+		_layout_region(id)
 
 
 ## Map a point in sitting.svg design space into this control (HEAD_ATLAS crop).
@@ -284,84 +423,59 @@ func _design_to_view(design: Vector2) -> Vector2:
 	return (design - HEAD_ATLAS.position) * view_scale
 
 
-func _layout_regions() -> void:
+func _layout_region(region_id: int) -> void:
+	if not _regions.has(region_id):
+		return
+	var data: Dictionary = _regions[region_id]
 	var view_scale := size.x / HEAD_SIZE
-	for i in _regions.size():
-		if i >= region_layout.size():
-			return
-		var e: Dictionary = region_layout[i]
-		var center := _design_to_view(Vector2(float(e.cx), float(e.cy)))
-		var radii := Vector2(float(e.rx), float(e.ry)) * view_scale
-		var rect := _regions[i]
-		rect.size = radii * 2.0
-		rect.pivot_offset = radii
-		rect.position = center - radii
-		rect.rotation = deg_to_rad(float(e.get("deg", 0.0)))
-
-
-## Axis-aligned bounds of the sensation-region cluster, in global (canvas) space.
-func get_regions_global_rect() -> Rect2:
-	if region_layout.is_empty() or size.x < 1.0:
-		return get_global_rect()
-	var view_scale := size.x / HEAD_SIZE
-	var min_p := Vector2(INF, INF)
-	var max_p := Vector2(-INF, -INF)
-	for e in region_layout:
-		var center := _design_to_view(Vector2(float(e.cx), float(e.cy)))
-		## Max radius covers rotated ellipses without needing full OBB math.
-		var pad := maxf(float(e.rx), float(e.ry)) * view_scale
-		min_p = min_p.min(center - Vector2(pad, pad))
-		max_p = max_p.max(center + Vector2(pad, pad))
-	var xform := get_global_transform_with_canvas()
-	var corners: Array[Vector2] = [
-		xform * min_p,
-		xform * Vector2(max_p.x, min_p.y),
-		xform * max_p,
-		xform * Vector2(min_p.x, max_p.y),
-	]
-	var g_min := corners[0]
-	var g_max := corners[0]
-	for c in corners:
-		g_min = g_min.min(c)
-		g_max = g_max.max(c)
-	return Rect2(g_min, g_max - g_min)
-
-
-func _layout_marks() -> void:
-	var n: int = mini(_regions.size(), _marks.size())
-	for i in n:
-		var region := _regions[i]
-		var mark := _marks[i]
-		mark.size = region.size
-		mark.pivot_offset = region.pivot_offset
-		mark.position = region.position
+	## Snap to whole pixels so circle + mark share a stable pixel phase.
+	## (Fractional positions make live fonts hinter-shift; texture marks stay put too.)
+	var center := _design_to_view(data.center).round()
+	var diameter := roundf(float(data.radius) * view_scale * 2.0)
+	if int(diameter) % 2 == 1:
+		diameter += 1.0
+	var radius := diameter * 0.5
+	var holder: Control = data.holder
+	var mark: _GlyphMark = data.mark
+	holder.size = Vector2(diameter, diameter)
+	holder.position = center - Vector2(radius, radius)
+	if data.busy:
+		mark.pivot_offset = mark.size * 0.5
+	else:
+		mark.pivot_offset = Vector2.ZERO
+		mark.scale = Vector2.ONE
+	mark.set_mark(mark.text, clampi(int(radius * 0.9), 14, 48))
 
 
 func _sync_region_input() -> void:
-	for i in _regions.size():
-		var can_press := not _input_blocked and _region_active[i] and not _region_busy[i]
-		_regions[i].mouse_filter = Control.MOUSE_FILTER_STOP if can_press else Control.MOUSE_FILTER_IGNORE
+	for id in _regions.keys():
+		var data: Dictionary = _regions[id]
+		var can_press: bool = not _input_blocked and not bool(data.busy)
+		var rect: ColorRect = data.rect
+		rect.mouse_filter = Control.MOUSE_FILTER_STOP if can_press else Control.MOUSE_FILTER_IGNORE
 
 
-func _on_region_input(event: InputEvent, index: int) -> void:
+func _on_region_input(event: InputEvent, region_id: int) -> void:
 	if _input_blocked:
 		return
-	if index < 0 or index >= _regions.size():
+	if not _regions.has(region_id):
 		return
-	if not _region_active[index] or _region_busy[index]:
+	var data: Dictionary = _regions[region_id]
+	if data.busy:
 		return
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton
 	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
 		return
-	if not _point_in_ellipse(mb.position, _regions[index].size):
+	var rect: ColorRect = data.rect
+	if not _point_in_circle(mb.position, rect.size):
 		return
 	get_viewport().set_input_as_handled()
-	region_pressed.emit(index)
+	region_pressed.emit(region_id)
 
 
-static func _point_in_ellipse(local: Vector2, rect_size: Vector2) -> bool:
+static func _point_in_circle(local: Vector2, rect_size: Vector2) -> bool:
 	var center := rect_size * 0.5
 	var n := (local - center) / center.max(Vector2.ONE * 0.001)
 	return n.length() <= 1.0
