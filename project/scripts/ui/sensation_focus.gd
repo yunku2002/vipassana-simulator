@@ -5,8 +5,6 @@ extends Control
 
 const _SvgPath := preload("res://scripts/svg_path.gd")
 
-signal region_activated(region_id: int)
-signal region_expired(region_id: int)
 signal region_pressed(region_id: int)
 
 ## Square head crop in design pixels (sitting.svg / mouth.svg; mask is 1024²).
@@ -17,7 +15,6 @@ const DISPLAY_SIZE := Vector2(1280, 1280)
 ## Cancels StageShell's bottom margin so the control is flush with the screen.
 const BOTTOM_OVERFLOW := 24.0
 
-const _REGION_IDLE := Color(1.0, 1.0, 1.0, 0.0)
 const _REGION_ACTIVE := Color(1.0, 0.88, 0.15, 0.55)
 ## Soft edge as a fraction of the circle radius (0 = hard, ~0.25 = soft).
 const _REGION_FEATHER := 0.28
@@ -49,9 +46,9 @@ var _next_region_id: int = 1
 ## Vector outline of the focus hole (smallest closed subpath in the mask SVG).
 var _hole_poly: PackedVector2Array = PackedVector2Array()
 var _hole_ready: bool = false
-var _interest_bounds: Rect2 = Rect2()
+var _hole_bounds: Rect2 = Rect2()
 
-## id -> {holder, rect, mark, center: Vector2, radius: float, busy: bool}
+## id -> {holder, rect, mark, center: Vector2, radius: float, busy: bool, tween?: Tween}
 var _regions: Dictionary = {}
 
 
@@ -80,27 +77,35 @@ class _GlyphMark extends Control:
 	static var _cache: Dictionary = {}
 
 	var text: String = ""
-	var font_size: int = 16
+	var font_size: int = 0
 	var _tex: Texture2D
 
-	func set_mark(p_text: String, p_font_size: int) -> void:
-		text = p_text
-		font_size = p_font_size
+	func refresh() -> void:
 		_tex = null
-		if not text.is_empty():
-			var font := get_theme_font("font", "Label")
-			if font == null:
-				font = ThemeDB.fallback_font
+		if text.length() == 1:
+			var font := _label_font()
 			if font != null:
 				_tex = _texture_for(font, font_size, text.unicode_at(0))
 		queue_redraw()
 
 	func _draw() -> void:
+		var color := get_theme_color("font_color", "Label")
+		if text.length() > 1:
+			var font := _label_font()
+			if font == null:
+				return
+			var s := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+			var pos := Vector2((size.x - s.x) * 0.5, (size.y - s.y) * 0.5 + font.get_ascent(font_size))
+			draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+			return
 		if _tex == null:
 			return
-		var color := get_theme_color("font_color", "Label")
 		var tex_size := Vector2(_tex.get_width(), _tex.get_height())
 		draw_texture_rect(_tex, Rect2((size - tex_size) * 0.5, tex_size), false, color)
+
+	func _label_font() -> Font:
+		var font := get_theme_font("font", "Label")
+		return font if font != null else ThemeDB.fallback_font
 
 	static func _texture_for(font: Font, p_font_size: int, code: int) -> Texture2D:
 		var key := Vector2i(p_font_size, code)
@@ -165,10 +170,8 @@ func spawn_region() -> int:
 	rect.gui_input.connect(_on_region_input.bind(id))
 	var mark := _GlyphMark.new()
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mark.modulate = Color.WHITE
-	mark.scale = Vector2.ONE
 	mark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	mark.set_mark("?", 16)
+	mark.text = "?"
 	holder.add_child(rect)
 	holder.add_child(mark)
 	add_child(holder)
@@ -182,7 +185,6 @@ func spawn_region() -> int:
 	}
 	_layout_region(id)
 	_sync_region_input()
-	region_activated.emit(id)
 	return id
 
 
@@ -194,10 +196,9 @@ func clear_region(region_id: int) -> void:
 		# Let the success burst animation complete.
 		return
 	_free_region(region_id)
-	region_expired.emit(region_id)
 
 
-func play_success_burst(region_id: int) -> void:
+func play_success_burst(region_id: int, burst_text: String) -> void:
 	if not _regions.has(region_id):
 		return
 	var data: Dictionary = _regions[region_id]
@@ -206,29 +207,24 @@ func play_success_burst(region_id: int) -> void:
 	data.busy = true
 	_sync_region_input()
 	var mark: _GlyphMark = data.mark
-	mark.set_mark("!", mark.font_size)
-	_layout_region(region_id)
+	mark.text = burst_text
+	mark.refresh()
 	mark.pivot_offset = mark.size * 0.5
 	var tween := create_tween()
+	data.tween = tween
 	tween.set_parallel(true)
 	tween.tween_property(mark, "scale", Vector2(2.4, 2.4), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(mark, "modulate:a", 0.0, 0.45)
 	tween.set_parallel(false)
-	tween.tween_callback(_finish_success_burst.bind(region_id))
-
-
-func _finish_success_burst(region_id: int) -> void:
-	if not _regions.has(region_id):
-		return
-	_free_region(region_id)
+	tween.tween_callback(_free_region.bind(region_id))
 
 
 ## Axis-aligned bounds of the focus hole, in global (canvas) space.
 func get_regions_global_rect() -> Rect2:
 	if not _hole_ready or size.x < 1.0:
 		return get_global_rect()
-	var min_p := _design_to_view(_interest_bounds.position)
-	var max_p := _design_to_view(_interest_bounds.position + _interest_bounds.size)
+	var min_p := _design_to_view(_hole_bounds.position)
+	var max_p := _design_to_view(_hole_bounds.position + _hole_bounds.size)
 	var xform := get_global_transform_with_canvas()
 	var corners: Array[Vector2] = [
 		xform * min_p,
@@ -248,6 +244,9 @@ func _free_region(region_id: int) -> void:
 	if not _regions.has(region_id):
 		return
 	var data: Dictionary = _regions[region_id]
+	var tween: Tween = data.get("tween") as Tween
+	if tween != null and tween.is_valid():
+		tween.kill()
 	var holder: Control = data.holder
 	_regions.erase(region_id)
 	if is_instance_valid(holder):
@@ -266,7 +265,7 @@ func _setup_textures() -> void:
 	_clip_dim_to_head(dim, head)
 	_configure_texture_rect(_head, ImageTexture.create_from_image(head))
 	_configure_texture_rect(_dim, ImageTexture.create_from_image(dim))
-	_build_interest_field()
+	_build_hole()
 
 
 func _load_dim_mask() -> Image:
@@ -300,10 +299,10 @@ func _load_mask_image(path: String) -> Image:
 	return full
 
 
-func _build_interest_field() -> void:
+func _build_hole() -> void:
 	_hole_poly = PackedVector2Array()
 	_hole_ready = false
-	_interest_bounds = Rect2()
+	_hole_bounds = Rect2()
 	var svg_path := _hole_svg_path()
 	if svg_path.is_empty():
 		push_error("No SVG mask found for focus hole (from %s)" % _dim_mask_path)
@@ -321,7 +320,7 @@ func _build_interest_field() -> void:
 	if _hole_poly.size() < 3:
 		push_error("Could not parse focus-hole subpath in: %s" % svg_path)
 		return
-	_interest_bounds = _SvgPath.bounds(_hole_poly)
+	_hole_bounds = _SvgPath.bounds(_hole_poly)
 	_hole_ready = true
 
 
@@ -351,9 +350,9 @@ static func _smallest_subpath(subpaths: Array[PackedVector2Array]) -> PackedVect
 
 
 func _pick_circle() -> Dictionary:
-	if not _hole_ready or _interest_bounds.size == Vector2.ZERO:
+	if not _hole_ready or _hole_bounds.size == Vector2.ZERO:
 		return {}
-	var bb := _interest_bounds
+	var bb := _hole_bounds
 	for attempt in _SPAWN_ATTEMPTS:
 		var r := randf_range(_region_radius_min, _region_radius_max)
 		var center := Vector2(
@@ -414,6 +413,8 @@ func _layout_focus() -> void:
 	_head.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for id in _regions.keys():
+		if bool(_regions[id].busy):
+			continue
 		_layout_region(id)
 
 
@@ -439,12 +440,8 @@ func _layout_region(region_id: int) -> void:
 	var mark: _GlyphMark = data.mark
 	holder.size = Vector2(diameter, diameter)
 	holder.position = center - Vector2(radius, radius)
-	if data.busy:
-		mark.pivot_offset = mark.size * 0.5
-	else:
-		mark.pivot_offset = Vector2.ZERO
-		mark.scale = Vector2.ONE
-	mark.set_mark(mark.text, clampi(int(radius * 0.9), 14, 48))
+	mark.font_size = clampi(int(radius * 0.9), 14, 48)
+	mark.refresh()
 
 
 func _sync_region_input() -> void:
@@ -456,13 +453,9 @@ func _sync_region_input() -> void:
 
 
 func _on_region_input(event: InputEvent, region_id: int) -> void:
-	if _input_blocked:
-		return
 	if not _regions.has(region_id):
 		return
 	var data: Dictionary = _regions[region_id]
-	if data.busy:
-		return
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton

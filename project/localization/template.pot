@@ -157,6 +157,13 @@ msgstr ""
 msgid "GAUGE_LABEL"
 msgstr ""
 
+#. Sensation names — one entry per line. Shown in place of "!" when a sensation is observed.
+msgid "SENSATIONS_GROSS"
+msgstr ""
+
+msgid "SENSATIONS_SUBTLE"
+msgstr ""
+
 #. Thought subjects — one entry per line. Prefix with "!" for boosted weighting.
 msgid "THOUGHT_SUBJECTS"
 msgstr ""

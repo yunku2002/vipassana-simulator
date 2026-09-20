@@ -34,7 +34,7 @@ A Godot-based sequence of minigames based on the 10-day introductory meditation 
 - Anapana-1: Observe your breathing.
 - Anapana-2: Stay aware of your breathing, letting go of all thoughts.
 - Anapana-3: Observe the sensations around the nostrils and the upper lip.
-- Anapana-4: Observe the subtler sensations on the narrower area: the philtrum.
+- Anapana-4: Observe the fainter sensations on the narrower area: the philtrum.
 - Vipassana-1: Observe the sensations of the entire body, part by part.
 - Vipassana-2: Be mindful of impermanence and do not generate craving or aversion towards sensations.
 - Vipassana-3: Observe symmetrically when possible.
@@ -64,4 +64,4 @@ Random thoughts appear from the figure's head in the corner, obscuring the figur
 
 ### Anapana-4
 
-Same as Anapana-3, only the area of interest is smaller, and so are the regions, increasing the difficulty. Sensation duration is also shorter.
+Same as Anapana-3, only the area of interest is smaller, and so are the regions, increasing the difficulty. Sensation duration is also shorter. Exclamation marks are replaced with random sensation names. Sensations are categorized into gross and subtle, but it makes no gameplay difference at this stage.

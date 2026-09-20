@@ -1,8 +1,10 @@
 [gd_scene format=3 uid="uid://fanapana004"]
 
 [ext_resource type="PackedScene" uid="uid://fanapana003" path="res://scenes/anapana_3.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://fm606wy3ntfo" path="res://scripts/anapana_4.gd" id="2_script"]
 
 [node name="Anapana4" unique_id=2046009404 instance=ExtResource("1_base")]
+script = ExtResource("2_script")
 dim_mask_path = "res://assets/mask_philtrum.png"
 sensation_duration_min = 0.5
 sensation_duration_max = 1.5

@@ -136,9 +136,13 @@ func _on_region_pressed(region_id: int) -> void:
 	if not _active_sensations.has(region_id):
 		return
 	_active_sensations.erase(region_id)
-	_focus.play_success_burst(region_id)
+	_focus.play_success_burst(region_id, _success_burst_text())
 	_gauge_value = minf(100.0, _gauge_value + gauge_fill_on_hit)
 	_gauge_bar.value = _gauge_value
+
+
+func _success_burst_text() -> String:
+	return "!"
 
 
 func _sync_focus_input_lock() -> void:
