@@ -5,16 +5,31 @@ const _SUBTLE_KEY := "SENSATIONS_SUBTLE"
 
 
 static func random_label() -> String:
+	return label_at(random_pick())
+
+
+## x is 0 for a gross name and 1 for a subtle name. y is the line index.
+static func random_pick() -> Vector2i:
 	var gross := _lines_of(_GROSS_KEY)
 	var subtle := _lines_of(_SUBTLE_KEY)
 	if gross.is_empty() and subtle.is_empty():
-		return "!"
-	var pool := gross
+		return Vector2i(-1, -1)
+	var use_subtle := false
 	if gross.is_empty():
-		pool = subtle
+		use_subtle = true
 	elif not subtle.is_empty() and randf() >= 0.5:
-		pool = subtle
-	return pool[randi() % pool.size()]
+		use_subtle = true
+	var pool := subtle if use_subtle else gross
+	return Vector2i(1 if use_subtle else 0, randi() % pool.size())
+
+
+static func label_at(pick: Vector2i) -> String:
+	if pick.x < 0:
+		return "!"
+	var lines := _lines_of(_SUBTLE_KEY if pick.x == 1 else _GROSS_KEY)
+	if lines.is_empty():
+		return "!"
+	return lines[posmod(pick.y, lines.size())]
 
 
 static func _lines_of(key: String) -> PackedStringArray:

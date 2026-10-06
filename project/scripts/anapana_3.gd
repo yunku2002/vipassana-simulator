@@ -26,7 +26,7 @@ const _CLOUD_READY_TARGET := 1
 @onready var _gauge_bar: ProgressBar = $Margin/Body/GaugeBox/Gauge
 @onready var _gauge_label: Label = $Margin/Body/GaugeBox/GaugeLabel
 @onready var _corner: BreathingFigure = $Margin/Body/CornerFigure
-@onready var _focus: SensationFocus = $Margin/Body/SensationFocus
+@onready var _focus: HeadFocus = $Margin/Body/HeadFocus
 @onready var _thought_layer: Control = $Margin/Body/ThoughtLayer
 
 var _gauge_value: float = 0.0
@@ -43,7 +43,7 @@ var _holding_elapsed: float = 0.0
 
 
 func _enter_tree() -> void:
-	$Margin/Body/SensationFocus.configure(dim_mask_path, region_radius_min, region_radius_max)
+	$Margin/Body/HeadFocus.configure(dim_mask_path, region_radius_min, region_radius_max)
 
 
 func _ready() -> void:
@@ -169,7 +169,7 @@ func _update_thought_spawning(delta: float) -> void:
 func _ensure_cloud_ready() -> void:
 	while _ready_clouds.size() + _cloud_bakes_pending < _CLOUD_READY_TARGET:
 		_cloud_bakes_pending += 1
-		ThoughtBubble.bake_cloud_texture_async(_on_cloud_bake_finished)
+		ThoughtBubble.bake_cloud_texture_async(_on_cloud_bake_finished, _thought_scale())
 
 
 func _on_cloud_bake_finished(img: Image) -> void:
@@ -196,7 +196,8 @@ func _spawn_thought(img: Image) -> void:
 		text,
 		cloud_top_left,
 		anchor_layer,
-		cloud_tex
+		cloud_tex,
+		_thought_scale()
 	)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))
 	bubble.reveal_finished.connect(_sync_focus_input_lock)
@@ -205,10 +206,16 @@ func _spawn_thought(img: Image) -> void:
 	bubble.z_index = 1
 
 
+func _thought_scale() -> float:
+	return 1.5
+
+
 func _pick_thought_local_position() -> Vector2:
 	return ThoughtBubble.random_top_left_in_zone(
 		_focus.get_regions_global_rect(),
-		_thought_layer
+		_thought_layer,
+		0.2,
+		ThoughtBubble.CLOUD_SIZE * _thought_scale()
 	)
 
 

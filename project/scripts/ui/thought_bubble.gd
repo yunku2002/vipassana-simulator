@@ -52,22 +52,32 @@ func _init() -> void:
 
 
 ## Per-axis half-extent for random cloud centers over a spawn zone.
-static func spawn_spread(zone_size: Vector2) -> Vector2:
+## small_region_fraction applies when the zone is smaller than the bubble on that axis.
+static func spawn_spread(
+	zone_size: Vector2,
+	small_region_fraction: float,
+	bubble_size: Vector2 = CLOUD_SIZE
+) -> Vector2:
 	return Vector2(
-		_spawn_spread_axis(zone_size.x, CLOUD_SIZE.x),
-		_spawn_spread_axis(zone_size.y, CLOUD_SIZE.y)
+		_spawn_spread_axis(zone_size.x, bubble_size.x, small_region_fraction),
+		_spawn_spread_axis(zone_size.y, bubble_size.y, small_region_fraction)
 	)
 
 
-static func _spawn_spread_axis(region: float, bubble: float) -> float:
+static func _spawn_spread_axis(region: float, bubble: float, small_region_fraction: float) -> float:
 	if region < bubble:
-		return region * 0.4
+		return region * small_region_fraction
 	return maxf(0.5 * bubble - 0.2 * region, 0.3 * region - 0.5 * bubble)
 
 
 ## One random top-left in thought_layer coords, using spawn_spread around zone_global.
-static func random_top_left_in_zone(zone_global: Rect2, thought_layer: Control) -> Vector2:
-	var spread := spawn_spread(zone_global.size)
+static func random_top_left_in_zone(
+	zone_global: Rect2,
+	thought_layer: Control,
+	small_region_fraction: float,
+	bubble_size: Vector2 = CLOUD_SIZE
+) -> Vector2:
+	var spread := spawn_spread(zone_global.size, small_region_fraction, bubble_size)
 	var center := zone_global.position + zone_global.size * 0.5
 	var cloud_center_global := Vector2(
 		randf_range(center.x - spread.x, center.x + spread.x),
@@ -75,9 +85,9 @@ static func random_top_left_in_zone(zone_global: Rect2, thought_layer: Control) 
 	)
 	var local_pos := (
 		thought_layer.get_global_transform_with_canvas().affine_inverse()
-		* (cloud_center_global - CLOUD_SIZE * 0.5)
+		* (cloud_center_global - bubble_size * 0.5)
 	)
-	var max_pos := (thought_layer.size - CLOUD_SIZE).max(Vector2.ZERO)
+	var max_pos := (thought_layer.size - bubble_size).max(Vector2.ZERO)
 	return Vector2(
 		clampf(local_pos.x, 0.0, max_pos.x),
 		clampf(local_pos.y, 0.0, max_pos.y)
@@ -96,12 +106,13 @@ static func prewarm_trail_dots() -> void:
 	_trail_dots_prewarmed[key] = true
 
 
-static func bake_cloud_texture_async(on_ready: Callable) -> void:
+static func bake_cloud_texture_async(on_ready: Callable, display_scale: float = 1.0) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	var circles: Array[Dictionary] = _cloud_layout_random(rng)
+	var cloud_size := CLOUD_SIZE * display_scale
+	var circles: Array[Dictionary] = _cloud_layout_random(rng, cloud_size)
 	WorkerThreadPool.add_task(func() -> void:
-		var img: Image = _bake_cloud_image(circles)
+		var img: Image = _bake_cloud_image(circles, cloud_size)
 		on_ready.call_deferred(img)
 	)
 
@@ -111,25 +122,28 @@ func configure(
 	text: String,
 	cloud_top_left_layer: Vector2,
 	anchor_layer: Vector2,
-	cloud_tex: ImageTexture
+	cloud_tex: ImageTexture,
+	display_scale: float = 1.0
 ) -> void:
 	subject_index = index
 	_label.text = text
+	var display := CLOUD_SIZE * display_scale
 	position = cloud_top_left_layer
-	size = CLOUD_SIZE
-	custom_minimum_size = CLOUD_SIZE
+	size = display
+	custom_minimum_size = display
 	_cloud_tex = cloud_tex
+	_label.add_theme_font_size_override("font_size", int(round(16.0 * display_scale)))
 
 	var anchor_local := anchor_layer - cloud_top_left_layer
-	var attach := _attach_point_toward(anchor_local)
-	# Dynamic trail length, but always at least 2 dots.
-	var trail_count := maxi(floori((attach.distance_to(anchor_local) ** 0.8) * 0.08), 2)
+	var attach := _attach_point_toward(anchor_local, display)
+	# Larger dots need fewer of them. Always at least 2.
+	var trail_count := maxi(floori((attach.distance_to(anchor_local) ** 0.8) * 0.08 / display_scale), 2)
 	_trail_centers.clear()
 	_trail_radii = PackedFloat32Array()
 	for i in trail_count:
 		var t := float(i + 1) / float(trail_count + 1)
 		_trail_centers.append(_quadratic_bezier(attach, anchor_local, t))
-		_trail_radii.append(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t))
+		_trail_radii.append(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t) * display_scale)
 	_trail_reveal_elapsed = 0.0
 	_label.visible = false
 	set_process(true)
@@ -169,7 +183,7 @@ func _draw() -> void:
 		_draw_trail_dot(_trail_centers[i], _trail_radii[i])
 	if not is_cloud_revealed():
 		return
-	draw_texture_rect(_cloud_tex, Rect2(Vector2.ZERO, CLOUD_SIZE), false)
+	draw_texture_rect(_cloud_tex, Rect2(Vector2.ZERO, size), false)
 
 
 func _draw_trail_dot(center: Vector2, radius: float) -> void:
@@ -187,9 +201,9 @@ static func _dot_texture(radius: float) -> ImageTexture:
 	return tex
 
 
-static func _max_circle_radius(pos: Vector2) -> float:
+static func _max_circle_radius(pos: Vector2, cloud_size: Vector2) -> float:
 	var inset := _STROKE_W * 0.5 + _AA
-	var inset_max := CLOUD_SIZE - Vector2.ONE * inset
+	var inset_max := cloud_size - Vector2.ONE * inset
 	var r := minf(
 		minf(pos.x - inset, inset_max.x - pos.x),
 		minf(pos.y - inset, inset_max.y - pos.y)
@@ -201,17 +215,19 @@ static func _append_cell_circle(
 	circles: Array[Dictionary],
 	rng: RandomNumberGenerator,
 	cell_origin: Vector2,
-	cell: Vector2
+	cell: Vector2,
+	cloud_size: Vector2
 ) -> void:
 	var pos := cell_origin + Vector2(
 		rng.randf_range(0.0, cell.x),
 		rng.randf_range(0.0, cell.y)
 	)
-	circles.append({"pos": pos, "r": _max_circle_radius(pos)})
+	circles.append({"pos": pos, "r": _max_circle_radius(pos, cloud_size)})
 
 
-static func _cloud_layout_random(rng: RandomNumberGenerator) -> Array[Dictionary]:
-	var cell := Vector2.ONE * _CELL_SIZE
+static func _cloud_layout_random(rng: RandomNumberGenerator, cloud_size: Vector2) -> Array[Dictionary]:
+	var cell_scale := cloud_size.x / CLOUD_SIZE.x
+	var cell := Vector2.ONE * _CELL_SIZE * cell_scale
 	var inner_origin := Vector2.ONE * float(_MARGIN_CELLS) * cell
 	var circles: Array[Dictionary] = []
 	for row in _INNER_ROWS:
@@ -221,7 +237,7 @@ static func _cloud_layout_random(rng: RandomNumberGenerator) -> Array[Dictionary
 			if col % 2 != 0:
 				continue
 			var cell_origin := inner_origin + Vector2(float(col), float(row)) * cell
-			_append_cell_circle(circles, rng, cell_origin, cell)
+			_append_cell_circle(circles, rng, cell_origin, cell, cloud_size)
 	return circles
 
 
@@ -243,18 +259,18 @@ func _quadratic_bezier(start: Vector2, end: Vector2, t: float) -> Vector2:
 
 
 ## Pick the cloud-edge attach point facing the anchor (left / right / top / bottom).
-static func _attach_point_toward(anchor_local: Vector2) -> Vector2:
-	var center := CLOUD_SIZE * 0.5
+static func _attach_point_toward(anchor_local: Vector2, cloud_size: Vector2) -> Vector2:
+	var center := cloud_size * 0.5
 	var to_anchor := anchor_local - center
 	const EDGE := 0.9
 	const INNER := 1.0 - EDGE
 	if absf(to_anchor.x) >= absf(to_anchor.y):
 		if to_anchor.x >= 0.0:
-			return Vector2(CLOUD_SIZE.x * EDGE, center.y)
-		return Vector2(CLOUD_SIZE.x * INNER, center.y)
+			return Vector2(cloud_size.x * EDGE, center.y)
+		return Vector2(cloud_size.x * INNER, center.y)
 	if to_anchor.y >= 0.0:
-		return Vector2(center.x, CLOUD_SIZE.y * EDGE)
-	return Vector2(center.x, CLOUD_SIZE.y * INNER)
+		return Vector2(center.x, cloud_size.y * EDGE)
+	return Vector2(center.x, cloud_size.y * INNER)
 
 
 static func _circle_sdf(p: Vector2, center: Vector2, radius: float) -> float:
@@ -321,9 +337,9 @@ static func _bake_dot_image(radius: float) -> Image:
 	return img
 
 
-static func _bake_cloud_image(circles: Array) -> Image:
-	var logic_w := maxi(ceili(CLOUD_SIZE.x * _BAKE_SCALE), 2)
-	var logic_h := maxi(ceili(CLOUD_SIZE.y * _BAKE_SCALE), 2)
+static func _bake_cloud_image(circles: Array, cloud_size: Vector2) -> Image:
+	var logic_w := maxi(ceili(cloud_size.x * _BAKE_SCALE), 2)
+	var logic_h := maxi(ceili(cloud_size.y * _BAKE_SCALE), 2)
 	var img := Image.create(logic_w, logic_h, false, Image.FORMAT_RGBA8)
 	var inv := 1.0 / float(_BAKE_SCALE)
 

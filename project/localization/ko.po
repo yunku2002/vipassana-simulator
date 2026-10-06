@@ -150,7 +150,20 @@ msgstr ""
 "참고로 감각에는 다양한 종류가 있을 수 있습니다."
 
 msgid "STAGE_VIPASSANA_1_GOAL"
+msgstr "몸 전체의 감각을 한 부분씩 관찰하십시오."
+
+msgid "STAGE_VIPASSANA_1_INSTRUCTIONS"
+msgstr "이제 관찰 자체는 자동으로 이루어집니다. 몸을 드래그하여 관심 부위를 이동하고 몸 구석구석을 관찰하세요."
+
+msgid "STAGE_VIPASSANA_1_BACKGROUND"
 msgstr ""
+"당신은 이제 본격적으로 위빠싸나 명상에 접어들어 몸 전체의 감각을 관찰하기 시작합니다. "
+"우선 머리 꼭대기를 관심 부위로 삼고서 발끝에 다다를 때까지 "
+"계속해서 각 부위의 감각을 관찰하고 다음 부위로 넘어갑니다. "
+"그 뒤에는 다시 머리에서 발끝까지 이 과정을 반복합니다.\n\n"
+"머리, 목, 가슴, 왼팔, 오른팔, 배, 등, 왼다리, 오른다리와 같이 "
+"관심 부위를 늘 같은 순서로 이동하는 것이 권장됩니다. "
+"(하지만 이 게임에서는 신경 쓰지 않아도 좋습니다.)"
 
 msgid "STAGE_VIPASSANA_2_GOAL"
 msgstr ""
@@ -178,6 +191,12 @@ msgstr "날숨"
 
 msgid "GAUGE_LABEL"
 msgstr "알아차림"
+
+msgid "GAUGE_COVERAGE"
+msgstr "관찰률"
+
+msgid "ONCE_MORE"
+msgstr "한 번 더"
 
 #. Sensation names — one entry per line. Shown in place of "!" when a sensation is observed.
 msgid "SENSATIONS_GROSS"

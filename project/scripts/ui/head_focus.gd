@@ -1,4 +1,4 @@
-class_name SensationFocus
+class_name HeadFocus
 extends Control
 
 ## Zoomed head crop with a darkened surround and dynamically spawned sensation circles.
@@ -286,7 +286,7 @@ func _load_dim_mask() -> Image:
 
 func _load_mask_image(path: String) -> Image:
 	if path.is_empty():
-		push_error("SensationFocus mask path is empty")
+		push_error("HeadFocus mask path is empty")
 		return null
 	var tex := load(path) as Texture2D
 	if tex == null:

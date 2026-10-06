@@ -190,7 +190,7 @@ func _pick_thought_local_position() -> Vector2:
 	var best_pos := Vector2.ZERO
 	var best_sep := -1.0
 	for attempt in _THOUGHT_PLACEMENT_ATTEMPTS:
-		var local_pos := ThoughtBubble.random_top_left_in_zone(zone, _thought_layer)
+		var local_pos := ThoughtBubble.random_top_left_in_zone(zone, _thought_layer, 0.4)
 		var min_sep := INF
 		for bubble in _thought_bubbles:
 			min_sep = minf(min_sep, local_pos.distance_to(bubble.position))

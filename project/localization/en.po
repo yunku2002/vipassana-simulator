@@ -152,6 +152,19 @@ msgstr ""
 msgid "STAGE_VIPASSANA_1_GOAL"
 msgstr "Observe the sensations of the entire body, part by part."
 
+msgid "STAGE_VIPASSANA_1_INSTRUCTIONS"
+msgstr "Observation itself is now done automatically. Drag the body to move the area of focus and observe every part of the body."
+
+msgid "STAGE_VIPASSANA_1_BACKGROUND"
+msgstr ""
+"You now begin to practice Vipassana meditation and observe sensations throughout the body. "
+"Starting from the top of the head as your area of focus, "
+"you keep on observing sensations in the area and moving on to the next area until you reach the toes. "
+"Then you repeat the entire process from head to toe.\n\n"
+"It is advised that you always move the area of focus in the same order, "
+"for instance, head, neck, chest, left arm, right arm, stomach, back, left leg, and right leg. "
+"(But for this game, there is no need to worry about it.)"
+
 msgid "STAGE_VIPASSANA_2_GOAL"
 msgstr "Be mindful of impermanence and do not generate craving or aversion towards sensations."
 
@@ -178,6 +191,12 @@ msgstr "Exhaling"
 
 msgid "GAUGE_LABEL"
 msgstr "Awareness"
+
+msgid "GAUGE_COVERAGE"
+msgstr "Coverage"
+
+msgid "ONCE_MORE"
+msgstr "Once more"
 
 #. Sensation names — one entry per line. Shown in place of "!" when a sensation is observed.
 msgid "SENSATIONS_GROSS"

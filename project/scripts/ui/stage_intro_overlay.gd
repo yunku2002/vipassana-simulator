@@ -60,7 +60,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _apply_content() -> void:
 	_stage_title.text = tr(_stage_prefix)
-	_goal.text = tr(_goal_key())
+	_goal.text = _keep_korean_words(tr(_goal_key()))
 
 	var instructions := _translate_optional(_instructions_key())
 	_fill_paragraphs(_instructions_block, instructions)
@@ -75,6 +75,28 @@ func _refresh_texts() -> void:
 	_btn_continue.text = tr("BTN_CONTINUE")
 	_background_title.text = tr("STAGE_INTRO_BACKGROUND_TITLE")
 	_btn_background_back.text = tr("BTN_BACK")
+
+
+## Hangul syllables are legal line breaks, so a Korean word can split even in word
+## wrap. A word joiner between syllables leaves the spaces as the only breaks.
+func _keep_korean_words(text: String) -> String:
+	if not TranslationServer.get_locale().begins_with("ko"):
+		return text
+	var out := ""
+	var prev_hangul := false
+	for i in text.length():
+		var ch := text[i]
+		var hangul := _is_hangul(ch)
+		if hangul and prev_hangul:
+			out += "\u2060"
+		out += ch
+		prev_hangul = hangul
+	return out
+
+
+func _is_hangul(ch: String) -> bool:
+	var code := ch.unicode_at(0)
+	return code >= 0xAC00 and code <= 0xD7A3
 
 
 func _goal_key() -> String:

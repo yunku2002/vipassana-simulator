@@ -130,6 +130,12 @@ msgstr ""
 msgid "STAGE_VIPASSANA_1_GOAL"
 msgstr ""
 
+msgid "STAGE_VIPASSANA_1_INSTRUCTIONS"
+msgstr ""
+
+msgid "STAGE_VIPASSANA_1_BACKGROUND"
+msgstr ""
+
 msgid "STAGE_VIPASSANA_2_GOAL"
 msgstr ""
 
@@ -155,6 +161,12 @@ msgid "BTN_OUT"
 msgstr ""
 
 msgid "GAUGE_LABEL"
+msgstr ""
+
+msgid "GAUGE_COVERAGE"
+msgstr ""
+
+msgid "ONCE_MORE"
 msgstr ""
 
 #. Sensation names — one entry per line. Shown in place of "!" when a sensation is observed.

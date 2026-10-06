@@ -6,6 +6,7 @@ const STAGES: Array[Dictionary] = [
 	{"prefix": "STAGE_ANAPANA_2", "scene": "res://scenes/anapana_2.tscn"},
 	{"prefix": "STAGE_ANAPANA_3", "scene": "res://scenes/anapana_3.tscn"},
 	{"prefix": "STAGE_ANAPANA_4", "scene": "res://scenes/anapana_4.tscn"},
+	{"prefix": "STAGE_VIPASSANA_1", "scene": "res://scenes/vipassana_1.tscn"},
 ]
 
 

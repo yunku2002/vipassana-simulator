@@ -3,7 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
 [ext_resource type="Script" uid="uid://byk4xrwgllp3o" path="res://scripts/anapana_3.gd" id="2_script"]
 [ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
-[ext_resource type="PackedScene" uid="uid://csensfocus01" path="res://scenes/sensation_focus.tscn" id="4_focus"]
+[ext_resource type="PackedScene" uid="uid://dapxqapywcwht" path="res://scenes/head_focus.tscn" id="4_focus"]
 [ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="5_gauge"]
 
 [node name="Anapana3" unique_id=375004381 instance=ExtResource("1_shell")]
@@ -30,14 +30,14 @@ layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 8.0
+offset_left = -8.0
 offset_top = -323.2
-offset_right = 315.2
+offset_right = 299.2
 offset_bottom = -16.0
 grow_vertical = 0
 rig_display_scale = 0.3
 
-[node name="SensationFocus" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1700999544 instance=ExtResource("4_focus")]
+[node name="HeadFocus" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1700999544 instance=ExtResource("4_focus")]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5

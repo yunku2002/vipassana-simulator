@@ -55,7 +55,6 @@ horizontal_alignment = 1
 [node name="Credit" type="Label" parent="Margin/Center/VBox/Header" unique_id=1107074718]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.451, 0.4, 0.31, 1)
-theme_override_font_sizes/font_size = 14
 text = "by Yunku Kang"
 horizontal_alignment = 1
 

@@ -8,20 +8,20 @@ A Godot-based sequence of minigames based on the 10-day introductory meditation 
 - Each step consists of multiple stages, with the last step consisting of only one.
 - Since the game is not focused on challenge, all stages are unlocked from the beginning.
 - But the experience still should be a fun, "gamified" one.
-- Mastery and progress is mainly portrayed by previous elements being simplified or automated.
+- Mastery and progress are mainly portrayed by previous elements being simplified or automated.
 - Only simple instructions for gameplay are shown first, with detailed theoretical background given upon request.
 
 ## UI
 
 - A responsive, landscape UI.
 - The title screen shows Start, Stage Select, and Options.
-- The Start button loads the first stage, but if there is a "next stage", it becomes Continue, which loads the that stage.
-- Whenever a stage is started, it is set as the next stage, and when in it is cleared, the next one is set as the next stage, unless the stage was the final one, in which case it is unset.
+- The Start button loads the first stage, but if there is a "next stage", it becomes Continue, which loads that stage.
+- Whenever a stage is started, it is set as the next stage, and when it is cleared, the next one is set as the next stage, unless the stage was the final one, in which case it is unset.
 - The Stage Select button loads a list of buttons for all stages, each of which loads the stage, and a Back button.
 - The Options button opens the options panel (options listed below) with a dimmed background.
 - Each stage starts with a panel showing a one-sentence goal and gameplay instructions, with a Learn More button for theoretical background and a Continue button.
 - Every stage has an Instructions button on the upper left corner, which opens the same panel described above, an Options button below it, which acts the same as the one on the title screen, and a Main Menu button below it, which prompts the user for confirmation before returning to the title screen.
-- After each stage is cleared, Stage Clear message pops up with Continue and Main Menu buttons.
+- After each stage is cleared, a Stage Clear message pops up with Continue and Main Menu buttons.
 - For the final stage, the Continue button is replaced with a goodbye message.
 
 ## Options
@@ -64,4 +64,11 @@ Random thoughts appear from the figure's head in the corner, obscuring the figur
 
 ### Anapana-4
 
-Same as Anapana-3, only the area of interest is smaller, and so are the regions, increasing the difficulty. Sensation duration is also shorter. Exclamation marks are replaced with random sensation names. Sensations are categorized into gross and subtle, but it makes no gameplay difference at this stage.
+Same as Anapana-3, only the area of focus is smaller, and so are the regions, increasing the difficulty. Sensation duration is also shorter. Exclamation marks are replaced with random sensation names. Sensations are categorized into gross and subtle, but it makes no gameplay difference at this stage.
+
+### Vipassana-1
+
+Now the area of focus is circular and moves over the entire body (visualized in a standing position). Observing is done automatically, and the player is charged with moving the area of focus by dragging the body figure. Visually, the area of focus remains still. The breathing figure remains, and random thoughts continue to block the area, pausing observation and focus movement.
+Sensations appear within the intersection of the area of focus and the body figure. Each sensation, with a question mark, automatically expands and fades away with a name like in Anapana-4 after a short, randomized moment. The area of focus moving away does not cause them to disappear. Observed sensations leave a copy in blue denoting that the region is "covered". Sensation centers do not appear in covered regions. The objective is to reach a certain high percentage of coverage, so the awareness gauge is replaced with a coverage gauge marked with a line representing the percentage goal.
+After the goal is reached once, "Once more" appears for a short while. While the message is visible, no sensations appear, and all the remaining ones are naturally observed. When the message goes away, coverage is cleared, and the area of focus is reset to the top of the head. Sensation appearance and observing are faster. The stage is cleared when the goal is reached for the second time.
+Sensation names aren't completely randomized, but clustered instead. Before each coverage goal begins, several invisible cluster centers are randomly spawned inside and outside the body figure, but kept a certain distance apart. Each cluster is given a random sensation name. A sensation later uses the name of the closest cluster center.

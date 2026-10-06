@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://csensfocus01"]
+[gd_scene format=3 uid="uid://dapxqapywcwht"]
 
-[ext_resource type="Script" uid="uid://e2ptp6ywioqp" path="res://scripts/ui/sensation_focus.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://e2ptp6ywioqp" path="res://scripts/ui/head_focus.gd" id="1_script"]
 
-[node name="SensationFocus" type="Control" unique_id=1622261288]
+[node name="HeadFocus" type="Control" unique_id=1622261288]
 layout_mode = 3
 anchors_preset = 0
 mouse_filter = 2
