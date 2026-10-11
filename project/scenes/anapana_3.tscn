@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://fanapana003"]
 
 [ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
-[ext_resource type="Script" uid="uid://byk4xrwgllp3o" path="res://scripts/anapana_3.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://byk4xrwgllp3o" path="res://scripts/scene/anapana_3.gd" id="2_script"]
 [ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
 [ext_resource type="PackedScene" uid="uid://dapxqapywcwht" path="res://scenes/head_focus.tscn" id="4_focus"]
 [ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="5_gauge"]

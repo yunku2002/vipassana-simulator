@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://stageshell01"]
 
-[ext_resource type="Script" uid="uid://bddjbrqa01u8s" path="res://scripts/stage_shell.gd" id="1_shell"]
+[ext_resource type="Script" uid="uid://bddjbrqa01u8s" path="res://scripts/scene/stage_shell.gd" id="1_shell"]
 
 [node name="StageShell" type="Control" unique_id=2009231832]
 layout_mode = 3

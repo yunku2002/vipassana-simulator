@@ -3,7 +3,7 @@ extends Control
 
 ## Zoomed head crop with a darkened surround and dynamically spawned sensation circles.
 
-const _SvgPath := preload("res://scripts/svg_path.gd")
+const _SvgPath := preload("res://scripts/other/svg_path.gd")
 
 signal region_pressed(region_id: int)
 

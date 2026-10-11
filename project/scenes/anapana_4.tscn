@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://fanapana004"]
 
 [ext_resource type="PackedScene" uid="uid://fanapana003" path="res://scenes/anapana_3.tscn" id="1_base"]
-[ext_resource type="Script" uid="uid://fm606wy3ntfo" path="res://scripts/anapana_4.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://fm606wy3ntfo" path="res://scripts/scene/anapana_4.gd" id="2_script"]
 
 [node name="Anapana4" unique_id=2046009404 instance=ExtResource("1_base")]
 script = ExtResource("2_script")

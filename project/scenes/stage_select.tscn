@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dstageselect1"]
 
-[ext_resource type="Script" uid="uid://c2ssqy15u84sh" path="res://scripts/stage_select.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://c2ssqy15u84sh" path="res://scripts/scene/stage_select.gd" id="1_script"]
 
 [node name="StageSelect" type="Control" unique_id=1625917548]
 layout_mode = 3

@@ -17,23 +17,6 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="Vipassana Simulator"
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
-_global_script_classes=[{
-"base": &"Control",
-"class": &"ChevronScrollIndicator",
-"icon": "",
-"language": &"GDScript",
-"path": "res://scripts/ui/chevron_scroll_indicator.gd"
-}, {
-"base": &"Control",
-"class": &"Anapana1",
-"icon": "",
-"language": &"GDScript",
-"path": "res://scripts/anapana_1.gd"
-}]
-_global_script_class_icons={
-"Anapana1": "",
-"ChevronScrollIndicator": ""
-}
 
 [autoload]
 
