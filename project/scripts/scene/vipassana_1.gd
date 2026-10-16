@@ -69,6 +69,18 @@ func _enter_tree() -> void:
 	)
 
 
+## Divides the original interval and delay by second_pass_pace. Calling it again leaves the pace where it is.
+func _apply_fast_pace() -> void:
+	var pace := maxf(second_pass_pace, 1.0)
+	var scan := _scan if _scan != null else $Margin/Body/Scan as BodyScan
+	scan.set_sensation_pace(
+		sensation_interval_min / pace,
+		sensation_interval_max / pace,
+		sensation_delay_min / pace,
+		sensation_delay_max / pace
+	)
+
+
 func _ready() -> void:
 	_goal_line = ColorRect.new()
 	_goal_line.color = _GOAL_LINE
@@ -164,27 +176,34 @@ func _update_once_more(delta: float) -> void:
 	if _phase != _Phase.ONCE_MORE:
 		return
 	_once_elapsed += delta
-	if _once_elapsed < once_more_hold or _scan.has_pending_observation():
+	if _once_elapsed < once_more_hold or _waits_for_sensations():
 		return
 	_end_once_more()
+
+
+func _waits_for_sensations() -> bool:
+	return _scan.has_pending_observation()
+
+
+func _dismiss_before_reset() -> void:
+	pass
+
+
+func _configure_next_pass() -> void:
+	_apply_fast_pace()
 
 
 func _end_once_more() -> void:
 	if not is_inside_tree() or _phase != _Phase.ONCE_MORE:
 		return
-	var pace := maxf(second_pass_pace, 1.0)
-	_scan.set_sensation_pace(
-		sensation_interval_min / pace,
-		sensation_interval_max / pace,
-		sensation_delay_min / pace,
-		sensation_delay_max / pace
-	)
+	_dismiss_before_reset()
 	_scan.clear_coverage()
 	_scan.reset_to_head()
+	_pass = 1
+	_configure_next_pass()
 	_scan.regenerate_name_clusters()
 	_gauge_bar.value = 0.0
 	_once_more.hide()
-	_pass = 1
 	_phase = _Phase.SCAN
 	_apply_locks()
 

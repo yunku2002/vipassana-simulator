@@ -17,6 +17,17 @@ const _CROWN_INSET_PX := 36.0
 
 const _YELLOW := Color(1.0, 0.88, 0.15, 0.55)
 const _BLUE := Color(0.29, 0.47, 0.78, 0.5)
+## Inhale-arrow red, at the same wash alpha as the default yellow.
+const _RED := Color(0.78, 0.25, 0.22, 0.55)
+const _GREEN := Color(0.24, 0.66, 0.32, 0.55)
+## Stronger than the gross-sensation red. The feather interpolates toward this color.
+const _REJECT_RED := Color(0.96, 0.1, 0.08, 0.75)
+const _NAME_OUTLINE := Color(1.0, 0.98, 0.9, 0.95)
+const _ANICCA_PATHS: Array[String] = [
+	"res://assets/anicca-1.mp3",
+	"res://assets/anicca-2.mp3",
+	"res://assets/anicca-3.mp3",
+]
 ## Same wash as the Anapana dim masks: black at 75% opacity.
 const _DIM := Color(0.0, 0.0, 0.0, 0.75)
 ## mask_nostrils.svg / mask_philtrum.svg blur the hole by this many design pixels.
@@ -27,11 +38,17 @@ const _CIRCLE_SHADER := """
 shader_type canvas_item;
 render_mode unshaded, blend_mix;
 uniform float feather : hint_range(0.0, 1.0) = 0.28;
+uniform vec4 reject : source_color = vec4(0.96, 0.1, 0.08, 0.75);
+instance uniform float outline_amount : hint_range(0.0, 1.0) = 0.0;
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float d = length(p);
-	float a = 1.0 - smoothstep(1.0 - feather, 1.0, d);
-	COLOR = vec4(COLOR.rgb, COLOR.a * a);
+	float t = smoothstep(1.0 - feather, 1.0, d);
+	float shift = smoothstep(0.0, 0.25, t);
+	vec3 rgb = mix(COLOR.rgb, reject.rgb, shift * outline_amount);
+	float plain = COLOR.a * (1.0 - t);
+	float rim = mix(COLOR.a, reject.a, shift) * (1.0 - smoothstep(0.25, 1.0, t));
+	COLOR = vec4(rgb, mix(plain, rim, outline_amount));
 }
 """
 
@@ -54,13 +71,18 @@ void fragment() {
 
 class _Sensation:
 	var holder: Control
+	var circle: ColorRect
 	var center: Vector2
 	var radius: float
 	var time_left: float
+	var cluster_index: int = -1
+	var reject_tween: Tween
 
 class _NameCluster:
 	var position: Vector2
 	var pick: Vector2i
+	## Offset into the equanimity color cycle, in seconds.
+	var phase: float
 
 var _body_scale: float
 var _focus_radius: float
@@ -74,6 +96,16 @@ var _delay_max: float
 var _drag_enabled: bool = false
 var _timers_paused: bool = false
 var _spawn_enabled: bool = false
+var _equanimity: bool = false
+var _press_enabled: bool = false
+var _default_hold: float = 0.5
+var _charged_hold: float = 1.4
+var _blend_sec: float = 0.3
+var _reject_sec: float = 0.5
+var _color_time: float = 0.0
+var _coverage_epoch: int = 0
+var _anicca_player: AudioStreamPlayer
+var _anicca_streams: Array[AudioStream] = []
 
 var _pixels_per_design: float = 1.0
 var _focus_center: Vector2 = Vector2.ZERO
@@ -157,6 +189,7 @@ func regenerate_name_clusters() -> void:
 			var created := _NameCluster.new()
 			created.position = point
 			created.pick = SensationNames.random_pick()
+			created.phase = randf() * _cycle_length()
 			_name_clusters.append(created)
 			placed = true
 			break
@@ -181,13 +214,17 @@ func _ready() -> void:
 func advance(delta: float) -> void:
 	if _timers_paused or not _mask_ready:
 		return
-	var finished: Array[_Sensation] = []
-	for sensation in _sensations:
-		sensation.time_left -= delta
-		if sensation.time_left <= 0.0:
-			finished.append(sensation)
-	for sensation in finished:
-		_observe(sensation)
+	if _equanimity:
+		_color_time += delta
+		_update_equanimity_colors()
+	else:
+		var finished: Array[_Sensation] = []
+		for sensation in _sensations:
+			sensation.time_left -= delta
+			if sensation.time_left <= 0.0:
+				finished.append(sensation)
+		for sensation in finished:
+			_observe(sensation)
 	if not _spawn_enabled:
 		return
 	_spawn_timer -= delta
@@ -217,10 +254,41 @@ func reset_to_head() -> void:
 
 
 func clear_coverage() -> void:
+	_coverage_epoch += 1
 	for child in _coverage.get_children():
 		child.queue_free()
 	_covered_px.fill(0)
 	_covered_count = 0
+
+
+func set_equanimity(enabled: bool) -> void:
+	_equanimity = enabled
+
+
+## default_sec is the fully-yellow hold. charged_sec is the red or green hold.
+## blend_sec is the interpolation between them, and counts as the charged color.
+func set_color_holds(default_sec: float, charged_sec: float, blend_sec: float) -> void:
+	_default_hold = maxf(default_sec, 0.05)
+	_charged_hold = maxf(charged_sec, 0.05)
+	_blend_sec = maxf(blend_sec, 0.0)
+	_color_time = 0.0
+
+
+func set_reject_outline_sec(seconds: float) -> void:
+	_reject_sec = maxf(seconds, 0.05)
+
+
+func set_press_enabled(enabled: bool) -> void:
+	_press_enabled = enabled
+
+
+## Drops sensations that were never resolved. They leave no coverage.
+func dismiss_unresolved() -> void:
+	for sensation in _sensations:
+		_kill_reject(sensation)
+		if is_instance_valid(sensation.holder):
+			sensation.holder.queue_free()
+	_sensations.clear()
 
 
 func set_drag_enabled(enabled: bool) -> void:
@@ -269,7 +337,18 @@ func _gui_input(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
 		return
 	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed or not _drag_enabled:
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+		return
+	if _equanimity and _press_enabled:
+		var hit := _sensation_at_local(get_local_mouse_position())
+		if hit != null:
+			accept_event()
+			if _is_default_hold(hit.cluster_index):
+				_resolve_cluster(hit)
+			else:
+				_flash_cluster(hit)
+			return
+	if not _drag_enabled:
 		return
 	_dragging = true
 	_drag_grab = get_local_mouse_position()
@@ -467,7 +546,7 @@ func _try_spawn() -> bool:
 			continue
 		if _center_is_covered(center):
 			continue
-		if _overlaps_live(center, radius):
+		if _overlaps_live(center):
 			continue
 		_add_sensation(center, radius)
 		return true
@@ -487,19 +566,33 @@ func _add_sensation(center: Vector2, radius: float) -> void:
 	circle.size = holder.size
 	holder.add_child(circle)
 	var mark := Label.new()
-	mark.text = "?"
 	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mark.size = holder.size
-	mark.add_theme_font_size_override(&"font_size", _mark_font_size("?", diameter))
 	holder.add_child(mark)
 	_live.add_child(holder)
 	var sensation := _Sensation.new()
 	sensation.holder = holder
+	sensation.circle = circle
 	sensation.center = center
 	sensation.radius = radius
-	sensation.time_left = randf_range(_delay_min, _delay_max)
+	sensation.cluster_index = _nearest_cluster_index(center)
+	if _equanimity:
+		var sensation_name := _name_for_cluster(sensation.cluster_index, center)
+		mark.text = sensation_name
+		mark.add_theme_font_size_override(
+			&"font_size",
+			maxi(int(_mark_font_size(sensation_name, diameter) * _NAME_FONT_SCALE), 11)
+		)
+		mark.add_theme_color_override(&"font_outline_color", _NAME_OUTLINE)
+		mark.add_theme_constant_override(&"outline_size", 4)
+		holder.set_meta(&"name_center", center)
+		circle.color = _sample_color(sensation.cluster_index)
+	else:
+		mark.text = "?"
+		mark.add_theme_font_size_override(&"font_size", _mark_font_size("?", diameter))
+		sensation.time_left = randf_range(_delay_min, _delay_max)
 	_sensations.append(sensation)
 
 
@@ -507,10 +600,12 @@ func _observe(sensation: _Sensation) -> void:
 	_sensations.erase(sensation)
 	_stamp(sensation.center, sensation.radius)
 	var holder := sensation.holder
-	if not is_instance_valid(holder) or holder.get_child_count() < 2:
+	var mark := _label_of(holder)
+	if mark == null:
 		_leave_blue_copy(sensation)
+		if is_instance_valid(holder):
+			holder.queue_free()
 		return
-	var mark := holder.get_child(1) as Label
 	holder.set_meta(&"name_center", sensation.center)
 	var name := _name_for_point(sensation.center)
 	mark.text = name
@@ -518,17 +613,7 @@ func _observe(sensation: _Sensation) -> void:
 		&"font_size",
 		maxi(int(_mark_font_size(name, holder.size.x) * _NAME_FONT_SCALE), 11)
 	)
-	mark.pivot_offset = holder.size * 0.5
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(mark, "scale", Vector2(2.2, 2.2), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(mark, "modulate:a", 0.0, 0.45)
-	tween.set_parallel(false)
-	tween.tween_callback(func() -> void:
-		_leave_blue_copy(sensation)
-		if is_instance_valid(holder):
-			holder.queue_free()
-	)
+	_fade_resolved_mark(sensation, holder, mark)
 
 
 func _leave_blue_copy(sensation: _Sensation) -> void:
@@ -591,9 +676,9 @@ func _center_is_covered(center: Vector2) -> bool:
 	return _covered_px[y * _mask_w + x] != 0
 
 
-func _overlaps_live(center: Vector2, radius: float) -> bool:
+func _overlaps_live(center: Vector2) -> bool:
 	for sensation in _sensations:
-		if center.distance_to(sensation.center) < radius + sensation.radius:
+		if center.distance_to(sensation.center) < sensation.radius:
 			return true
 	return false
 
@@ -608,9 +693,9 @@ func _refresh_sensation_names() -> void:
 		return
 	for child in _live.get_children():
 		var holder := child as Control
-		if holder == null or not holder.has_meta(&"name_center") or holder.get_child_count() < 2:
+		if holder == null or not holder.has_meta(&"name_center"):
 			continue
-		var mark := holder.get_child(1) as Label
+		var mark := _label_of(holder)
 		if mark == null:
 			continue
 		mark.text = _name_for_point(holder.get_meta(&"name_center"))
@@ -625,16 +710,10 @@ func _draw_cluster_markers() -> void:
 
 
 func _name_for_point(point: Vector2) -> String:
-	if _name_clusters.is_empty():
+	var index := _nearest_cluster_index(point)
+	if index < 0:
 		return SensationNames.random_label()
-	var nearest := _name_clusters[0]
-	var best := point.distance_squared_to(nearest.position)
-	for cluster in _name_clusters:
-		var dist := point.distance_squared_to(cluster.position)
-		if dist < best:
-			best = dist
-			nearest = cluster
-	return SensationNames.label_at(nearest.pick)
+	return SensationNames.label_at(_name_clusters[index].pick)
 
 
 func _focus_center_design() -> Vector2:
@@ -662,12 +741,200 @@ func _mark_font_size(text: String, diameter: float) -> int:
 	return clampi(int(diameter * ratio), 13, 36)
 
 
+func _cycle_length() -> float:
+	return _default_hold + _charged_hold + _blend_sec * 2.0
+
+
+func _nearest_cluster_index(point: Vector2) -> int:
+	if _name_clusters.is_empty():
+		return -1
+	var nearest := 0
+	var best := point.distance_squared_to(_name_clusters[0].position)
+	for i in range(1, _name_clusters.size()):
+		var dist := point.distance_squared_to(_name_clusters[i].position)
+		if dist < best:
+			best = dist
+			nearest = i
+	return nearest
+
+
+func _name_for_cluster(cluster_index: int, point: Vector2) -> String:
+	if cluster_index < 0 or cluster_index >= _name_clusters.size():
+		return _name_for_point(point)
+	return SensationNames.label_at(_name_clusters[cluster_index].pick)
+
+
+func _charged_color(cluster_index: int) -> Color:
+	if cluster_index < 0 or cluster_index >= _name_clusters.size():
+		return _RED
+	if _name_clusters[cluster_index].pick.x == 1:
+		return _GREEN
+	return _RED
+
+
+func _phase_time(cluster_index: int) -> float:
+	var phase := 0.0
+	if cluster_index >= 0 and cluster_index < _name_clusters.size():
+		phase = _name_clusters[cluster_index].phase
+	return fposmod(_color_time + phase, maxf(_cycle_length(), 0.001))
+
+
+func _is_default_hold(cluster_index: int) -> bool:
+	return _phase_time(cluster_index) < _default_hold
+
+
+func _sample_color(cluster_index: int) -> Color:
+	var charged := _charged_color(cluster_index)
+	var t := _phase_time(cluster_index)
+	var to_charged := _default_hold
+	var charged_start := to_charged + _blend_sec
+	var charged_end := charged_start + _charged_hold
+	if t < to_charged:
+		return _YELLOW
+	if t < charged_start:
+		var u := 0.0 if _blend_sec <= 0.0 else (t - to_charged) / _blend_sec
+		return _YELLOW.lerp(charged, u)
+	if t < charged_end:
+		return charged
+	var back := 0.0 if _blend_sec <= 0.0 else (t - charged_end) / _blend_sec
+	return charged.lerp(_YELLOW, back)
+
+
+func _update_equanimity_colors() -> void:
+	for sensation in _sensations:
+		if sensation.circle == null:
+			continue
+		sensation.circle.color = _sample_color(sensation.cluster_index)
+
+
+func _sensation_in_focus(sensation: _Sensation) -> bool:
+	if _pixels_per_design <= 0.0:
+		return false
+	var focus_r := _focus_radius / _pixels_per_design
+	return sensation.center.distance_to(_focus_center_design()) <= focus_r
+
+
+func _sensation_at_local(local: Vector2) -> _Sensation:
+	for i in range(_sensations.size() - 1, -1, -1):
+		var sensation := _sensations[i]
+		if not _sensation_in_focus(sensation) or not is_instance_valid(sensation.holder):
+			continue
+		var center_px := _live.position + sensation.holder.position + sensation.holder.size * 0.5
+		if local.distance_to(center_px) <= sensation.holder.size.x * 0.5:
+			return sensation
+	return null
+
+
+func _group_of(sensation: _Sensation) -> Array[_Sensation]:
+	var found: Array[_Sensation] = []
+	if sensation.cluster_index < 0:
+		found.append(sensation)
+		return found
+	for other in _sensations:
+		if other.cluster_index == sensation.cluster_index:
+			found.append(other)
+	return found
+
+
+func _resolve_cluster(sensation: _Sensation) -> void:
+	_play_anicca()
+	for member in _group_of(sensation):
+		_resolve_sensation(member)
+
+
+func _play_anicca() -> void:
+	if _anicca_player == null:
+		_anicca_player = AudioStreamPlayer.new()
+		_anicca_player.bus = &"Master"
+		add_child(_anicca_player)
+		for path in _ANICCA_PATHS:
+			var stream := load(path) as AudioStream
+			if stream != null:
+				_anicca_streams.append(stream)
+	if _anicca_streams.is_empty():
+		return
+	_anicca_player.stream = _anicca_streams[randi() % _anicca_streams.size()]
+	_anicca_player.play()
+
+
+func _resolve_sensation(sensation: _Sensation) -> void:
+	_sensations.erase(sensation)
+	_kill_reject(sensation)
+	if is_instance_valid(sensation.holder):
+		sensation.holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_set_outline_amount(sensation.circle, 0.0)
+	_stamp(sensation.center, sensation.radius)
+	var holder := sensation.holder
+	var mark := _label_of(holder)
+	if mark == null:
+		_leave_blue_copy(sensation)
+		if is_instance_valid(holder):
+			holder.queue_free()
+		return
+	_fade_resolved_mark(sensation, holder, mark)
+
+
+func _fade_resolved_mark(sensation: _Sensation, holder: Control, mark: Label) -> void:
+	mark.pivot_offset = holder.size * 0.5
+	var epoch := _coverage_epoch
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(mark, "scale", Vector2(2.2, 2.2), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(mark, "modulate:a", 0.0, 0.45)
+	tween.set_parallel(false)
+	tween.tween_callback(func() -> void:
+		if epoch == _coverage_epoch:
+			_leave_blue_copy(sensation)
+		if is_instance_valid(holder):
+			holder.queue_free()
+	)
+
+
+func _flash_cluster(sensation: _Sensation) -> void:
+	for member in _group_of(sensation):
+		_flash_outline(member)
+
+
+func _flash_outline(sensation: _Sensation) -> void:
+	var circle := sensation.circle
+	if not is_instance_valid(circle):
+		return
+	_kill_reject(sensation)
+	_set_outline_amount(circle, 1.0)
+	var tween := create_tween()
+	sensation.reject_tween = tween
+	tween.tween_method(func(amount: float) -> void:
+		_set_outline_amount(circle, amount)
+	, 1.0, 0.0, _reject_sec)
+
+
+func _set_outline_amount(circle: ColorRect, amount: float) -> void:
+	if is_instance_valid(circle):
+		circle.set_instance_shader_parameter(&"outline_amount", amount)
+
+
+func _kill_reject(sensation: _Sensation) -> void:
+	if sensation.reject_tween != null and sensation.reject_tween.is_valid():
+		sensation.reject_tween.kill()
+	sensation.reject_tween = null
+
+
+func _label_of(holder: Control) -> Label:
+	if not is_instance_valid(holder):
+		return null
+	for child in holder.get_children():
+		if child is Label:
+			return child as Label
+	return null
+
+
 func _make_circle_material() -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = _CIRCLE_SHADER
 	var mat := ShaderMaterial.new()
 	mat.shader = shader
 	mat.set_shader_parameter("feather", _FEATHER)
+	mat.set_shader_parameter("reject", _REJECT_RED)
 	return mat
 
 
