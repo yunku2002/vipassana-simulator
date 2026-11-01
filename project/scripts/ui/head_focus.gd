@@ -15,7 +15,7 @@ const DISPLAY_SIZE := Vector2(1280, 1280)
 ## Cancels StageShell's bottom margin so the control is flush with the screen.
 const BOTTOM_OVERFLOW := 24.0
 
-const _REGION_ACTIVE := Color(1.0, 0.88, 0.15, 0.55)
+static var _REGION_ACTIVE: Color = Color.from_hsv(50.0 / 360.0, 0.85, 0.95, 0.55)
 ## Soft edge as a fraction of the circle radius (0 = hard, ~0.25 = soft).
 const _REGION_FEATHER := 0.28
 const _SPAWN_ATTEMPTS := 24
@@ -175,6 +175,7 @@ func spawn_region() -> int:
 	holder.add_child(rect)
 	holder.add_child(mark)
 	add_child(holder)
+	move_child(holder, _dim.get_index())
 	_regions[id] = {
 		"holder": holder,
 		"rect": rect,

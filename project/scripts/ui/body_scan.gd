@@ -15,11 +15,9 @@ const _NAME_FONT_SCALE := 0.6
 ## How far inside the top of the focus circle the crown sits at the start of a pass.
 const _CROWN_INSET_PX := 36.0
 
-const _YELLOW := Color(1.0, 0.88, 0.15, 0.55)
-const _BLUE := Color(0.29, 0.47, 0.78, 0.5)
-## Inhale-arrow red, at the same wash alpha as the default yellow.
-const _RED := Color(0.78, 0.25, 0.22, 0.55)
-const _GREEN := Color(0.24, 0.66, 0.32, 0.55)
+static var _RED: Color = Color.from_hsv(10.0 / 360.0, 0.4, 0.9, 0.55)
+static var _GREEN: Color = Color.from_hsv(130.0 / 360.0, 0.3, 0.7, 0.55)
+static var _BLUE: Color = Color.from_hsv(220.0 / 360.0, 0.4, 0.8, 0.5)
 ## Stronger than the gross-sensation red. The feather interpolates toward this color.
 const _REJECT_RED := Color(0.96, 0.1, 0.08, 0.75)
 const _NAME_OUTLINE := Color(1.0, 0.98, 0.9, 0.95)
@@ -388,6 +386,9 @@ func _build_nodes() -> void:
 	_coverage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_coverage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_body.add_child(_coverage)
+	_live = Control.new()
+	_live.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body.add_child(_live)
 	_dim = TextureRect.new()
 	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_dim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -401,9 +402,6 @@ func _build_nodes() -> void:
 	_cluster_markers.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_cluster_markers.draw.connect(_draw_cluster_markers)
 	_body.add_child(_cluster_markers)
-	_live = Control.new()
-	_live.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_live)
 
 
 func _build_figure() -> void:
@@ -515,7 +513,6 @@ func _head_anchor() -> Vector2:
 
 func _set_body_position(pos: Vector2) -> void:
 	_body.position = pos
-	_live.position = pos
 	_update_dim()
 
 
@@ -560,7 +557,7 @@ func _add_sensation(center: Vector2, radius: float) -> void:
 	holder.size = Vector2(diameter, diameter)
 	holder.position = _snap_top_left(center, diameter)
 	var circle := ColorRect.new()
-	circle.color = _YELLOW
+	circle.color = HeadFocus._REGION_ACTIVE
 	circle.material = _circle_material
 	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	circle.size = holder.size
@@ -790,14 +787,14 @@ func _sample_color(cluster_index: int) -> Color:
 	var charged_start := to_charged + _blend_sec
 	var charged_end := charged_start + _charged_hold
 	if t < to_charged:
-		return _YELLOW
+		return HeadFocus._REGION_ACTIVE
 	if t < charged_start:
 		var u := 0.0 if _blend_sec <= 0.0 else (t - to_charged) / _blend_sec
-		return _YELLOW.lerp(charged, u)
+		return HeadFocus._REGION_ACTIVE.lerp(charged, u)
 	if t < charged_end:
 		return charged
 	var back := 0.0 if _blend_sec <= 0.0 else (t - charged_end) / _blend_sec
-	return charged.lerp(_YELLOW, back)
+	return charged.lerp(HeadFocus._REGION_ACTIVE, back)
 
 
 func _update_equanimity_colors() -> void:
@@ -819,7 +816,7 @@ func _sensation_at_local(local: Vector2) -> _Sensation:
 		var sensation := _sensations[i]
 		if not _sensation_in_focus(sensation) or not is_instance_valid(sensation.holder):
 			continue
-		var center_px := _live.position + sensation.holder.position + sensation.holder.size * 0.5
+		var center_px := _body.position + sensation.holder.position + sensation.holder.size * 0.5
 		if local.distance_to(center_px) <= sensation.holder.size.x * 0.5:
 			return sensation
 	return null
