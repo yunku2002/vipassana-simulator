@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://cq8v2stage5p1"]
 
 [ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
-[ext_resource type="Script" path="res://scripts/scene/vipassana_2.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://dk4v2eq7m3n8a" path="res://scripts/scene/vipassana_2.gd" id="2_script"]
 [ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
 [ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="4_gauge"]
 [ext_resource type="Script" uid="uid://by6dmys40h1xh" path="res://scripts/ui/body_scan.gd" id="5_scan"]

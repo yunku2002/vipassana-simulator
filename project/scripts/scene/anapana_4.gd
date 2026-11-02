@@ -6,4 +6,4 @@ func _thought_scale() -> float:
 
 
 func _success_burst_text() -> String:
-	return SensationNames.random_label()
+	return SensationNames.random_label(0.5)

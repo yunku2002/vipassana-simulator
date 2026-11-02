@@ -54,6 +54,8 @@ const _DIM_SHADER := """
 shader_type canvas_item;
 render_mode unshaded, blend_mix;
 uniform vec2 focus_local_px;
+uniform vec2 focus_b_local_px;
+uniform float dual_focus = 0.0;
 uniform vec2 body_size;
 uniform float radius_px = 120.0;
 uniform float feather_px = 12.0;
@@ -62,14 +64,18 @@ void fragment() {
 	float body_a = texture(TEXTURE, UV).a;
 	vec2 px = UV * body_size;
 	float d = length(px - focus_local_px);
+	if (dual_focus > 0.5) {
+		d = min(d, length(px - focus_b_local_px));
+	}
 	float a = smoothstep(radius_px - feather_px, radius_px + feather_px, d);
 	COLOR = vec4(dim_color.rgb, dim_color.a * body_a * a);
 }
 """
 
 class _Sensation:
-	var holder: Control
-	var circle: ColorRect
+	## One copy per view: left (or only) view first, then the right view when symmetric.
+	## Each view's pane clips its copy to the side of the body it shows.
+	var holders: Array[Control] = []
 	var center: Vector2
 	var radius: float
 	var time_left: float
@@ -95,6 +101,7 @@ var _drag_enabled: bool = false
 var _timers_paused: bool = false
 var _spawn_enabled: bool = false
 var _equanimity: bool = false
+var _subtle_chance: float = 0.5
 var _press_enabled: bool = false
 var _default_hold: float = 0.5
 var _charged_hold: float = 1.4
@@ -107,10 +114,18 @@ var _anicca_streams: Array[AudioStream] = []
 
 var _pixels_per_design: float = 1.0
 var _focus_center: Vector2 = Vector2.ZERO
+## Half-gap between the two focus centers when symmetric. Zero means they coincide.
+var _focus_offset: float = 0.0
+## How far each view is shifted away from the shared pose, in opposite directions.
+var _view_shift: float = 0.0
+## Design y under the focus centers when symmetric.
+var _scan_y: float = 0.0
 var _crown: Vector2 = Vector2.ZERO
 var _bounds: Rect2 = Rect2()
 var _placed: bool = false
 var _mask_ready: bool = false
+var _symmetric: bool = false
+var _overlap_margin: float = 40.0
 
 var _mask_w: int = 0
 var _mask_h: int = 0
@@ -123,13 +138,20 @@ var _spawn_timer: float = 0.0
 var _dragging: bool = false
 var _drag_grab: Vector2 = Vector2.ZERO
 var _drag_body_start: Vector2 = Vector2.ZERO
+var _drag_last: Vector2 = Vector2.ZERO
+var _drag_side_left: bool = true
 
 var _circle_material: ShaderMaterial
 var _dim_material: ShaderMaterial
+var _dim_material_b: ShaderMaterial
+var _left_pane: Control
+var _right_pane: Control
 var _body: Control
+var _body_b: Control
 var _coverage: Control
-var _dim: TextureRect
+var _coverage_b: Control
 var _live: Control
+var _live_b: Control
 var _cluster_markers: Control
 var _sensations: Array[_Sensation] = []
 var _name_clusters: Array[_NameCluster] = []
@@ -155,6 +177,12 @@ func configure(
 	_interval_max = interval_max
 	_delay_min = delay_min
 	_delay_max = delay_max
+
+
+## Call before _ready. Two clipped views and two focus holes, mirrored horizontally.
+func set_symmetric(enabled: bool, overlap_margin: float = 40.0) -> void:
+	_symmetric = enabled
+	_overlap_margin = maxf(overlap_margin, 0.0)
 
 
 ## separation is the minimum distance between centers, in design pixels.
@@ -186,7 +214,7 @@ func regenerate_name_clusters() -> void:
 				continue
 			var created := _NameCluster.new()
 			created.position = point
-			created.pick = SensationNames.random_pick()
+			created.pick = SensationNames.random_pick(_subtle_chance)
 			created.phase = randf() * _cycle_length()
 			_name_clusters.append(created)
 			placed = true
@@ -227,7 +255,11 @@ func advance(delta: float) -> void:
 		return
 	_spawn_timer -= delta
 	while _spawn_timer <= 0.0:
-		if not _try_spawn():
+		var spawned := false
+		for focus_design in _focus_centers_design():
+			if _try_spawn_at(focus_design):
+				spawned = true
+		if not spawned:
 			break
 		_spawn_timer = randf_range(_interval_min, _interval_max)
 
@@ -246,21 +278,32 @@ func reset_to_head() -> void:
 	_dragging = false
 	if not _mask_ready:
 		return
-	_set_body_position(_focus_center - _head_anchor() * _pixels_per_design)
-	_clamp_body()
+	if _symmetric:
+		_focus_offset = 0.0
+		_view_shift = 0.0
+		_scan_y = _head_anchor().y
+		_apply_pose()
+	else:
+		_set_body_position(_focus_center - _head_anchor() * _pixels_per_design)
+		_clamp_body()
 	_placed = true
 
 
 func clear_coverage() -> void:
 	_coverage_epoch += 1
-	for child in _coverage.get_children():
-		child.queue_free()
+	for layer in _coverage_layers():
+		for child in layer.get_children():
+			child.queue_free()
 	_covered_px.fill(0)
 	_covered_count = 0
 
 
 func set_equanimity(enabled: bool) -> void:
 	_equanimity = enabled
+
+
+func set_subtle_chance(chance: float) -> void:
+	_subtle_chance = clampf(chance, 0.0, 1.0)
 
 
 ## default_sec is the fully-yellow hold. charged_sec is the red or green hold.
@@ -284,8 +327,7 @@ func set_press_enabled(enabled: bool) -> void:
 func dismiss_unresolved() -> void:
 	for sensation in _sensations:
 		_kill_reject(sensation)
-		if is_instance_valid(sensation.holder):
-			sensation.holder.queue_free()
+		_free_sensation_holders(sensation)
 	_sensations.clear()
 
 
@@ -313,6 +355,7 @@ func set_spawn_enabled(enabled: bool) -> void:
 
 
 ## Axis-aligned bounds of the focus circle, in canvas space. Used to place thoughts.
+## Symmetric focuses still report the center one, so thoughts land in the same place.
 func get_focus_global_rect() -> Rect2:
 	var xform := get_global_transform_with_canvas()
 	var c := _focus_center
@@ -350,7 +393,9 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	_dragging = true
 	_drag_grab = get_local_mouse_position()
-	_drag_body_start = _body.position
+	_drag_last = _drag_grab
+	_drag_body_start = _body_scan_pos(_body)
+	_drag_side_left = not _symmetric or _drag_grab.x < size.x * 0.5
 	accept_event()
 
 
@@ -365,15 +410,41 @@ func _input(event: InputEvent) -> void:
 	if not event is InputEventMouseMotion or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_dragging = false
 		return
-	_set_body_position(_drag_body_start + get_local_mouse_position() - _drag_grab)
-	_clamp_body()
+	var mouse := get_local_mouse_position()
+	if _symmetric:
+		_drag_symmetric(mouse - _drag_last)
+		_drag_last = mouse
+	else:
+		_set_body_position(_drag_body_start + mouse - _drag_grab)
+		_clamp_body()
 
 
 func _build_nodes() -> void:
-	_body = Control.new()
-	_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	add_child(_body)
+	if _symmetric:
+		_left_pane = _make_pane()
+		_right_pane = _make_pane()
+		add_child(_left_pane)
+		add_child(_right_pane)
+		_body = _make_body_tree(_left_pane, false)
+		_dim_material_b = _make_dim_material()
+		_body_b = _make_body_tree(_right_pane, true)
+		_layout_panes()
+		return
+	_body = _make_body_tree(self, false)
+
+
+func _make_pane() -> Control:
+	var pane := Control.new()
+	pane.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pane.clip_contents = true
+	return pane
+
+
+func _make_body_tree(parent: Control, mirror: bool) -> Control:
+	var body := Control.new()
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	parent.add_child(body)
 	var texture := TextureRect.new()
 	texture.name = "Figure"
 	texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -381,27 +452,44 @@ func _build_nodes() -> void:
 	texture.stretch_mode = TextureRect.STRETCH_SCALE
 	texture.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_body.add_child(texture)
-	_coverage = Control.new()
-	_coverage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_coverage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_body.add_child(_coverage)
-	_live = Control.new()
-	_live.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_body.add_child(_live)
-	_dim = TextureRect.new()
-	_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_dim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_dim.stretch_mode = TextureRect.STRETCH_SCALE
-	_dim.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_dim.material = _dim_material
-	_dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_body.add_child(_dim)
-	_cluster_markers = Control.new()
-	_cluster_markers.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_cluster_markers.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_cluster_markers.draw.connect(_draw_cluster_markers)
-	_body.add_child(_cluster_markers)
+	body.add_child(texture)
+	var coverage := Control.new()
+	coverage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coverage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	body.add_child(coverage)
+	var live := Control.new()
+	live.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(live)
+	var dim := TextureRect.new()
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	dim.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	dim.stretch_mode = TextureRect.STRETCH_SCALE
+	dim.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	dim.material = _dim_material_b if mirror else _dim_material
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	body.add_child(dim)
+	if mirror:
+		_coverage_b = coverage
+		_live_b = live
+	else:
+		_coverage = coverage
+		_live = live
+		_cluster_markers = Control.new()
+		_cluster_markers.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_cluster_markers.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_cluster_markers.draw.connect(_draw_cluster_markers)
+		body.add_child(_cluster_markers)
+	return body
+
+
+func _layout_panes() -> void:
+	if not _symmetric or _left_pane == null or _right_pane == null:
+		return
+	var half := size.x * 0.5
+	_left_pane.position = Vector2.ZERO
+	_left_pane.size = Vector2(half, size.y)
+	_right_pane.position = Vector2(half, 0.0)
+	_right_pane.size = Vector2(size.x - half, size.y)
 
 
 func _build_figure() -> void:
@@ -414,11 +502,21 @@ func _build_figure() -> void:
 		push_error("Failed to rasterize standing.svg")
 		return
 	_pixels_per_design = float(displayed.get_width()) / DESIGN_SIZE.x
-	_body.size = displayed.get_size()
-	var figure := _body.get_node("Figure") as TextureRect
-	figure.texture = ImageTexture.create_from_image(displayed)
-	_dim.texture = figure.texture
+	var tex := ImageTexture.create_from_image(displayed)
+	_apply_figure_texture(_body, tex, displayed.get_size())
+	if _body_b != null:
+		_apply_figure_texture(_body_b, tex, displayed.get_size())
 	_build_mask(svg)
+
+
+func _apply_figure_texture(body: Control, tex: Texture2D, tex_size: Vector2) -> void:
+	body.size = tex_size
+	var figure := body.get_node("Figure") as TextureRect
+	figure.texture = tex
+	for child in body.get_children():
+		if child is TextureRect and (child as TextureRect).material != null:
+			(child as TextureRect).texture = tex
+			break
 
 
 func _build_mask(svg: String) -> void:
@@ -481,10 +579,20 @@ func _crown_design(top_y: int) -> Vector2:
 func _on_resized() -> void:
 	if size.x < 2.0 or size.y < 2.0 or _pixels_per_design <= 0.0:
 		return
+	if _symmetric:
+		_focus_center = size * 0.5
+		_layout_panes()
+		if not _mask_ready:
+			return
+		if _placed:
+			_apply_pose()
+		else:
+			reset_to_head()
+		return
 	var kept := Vector2.ZERO
 	var keep := _placed and _mask_ready
 	if keep:
-		kept = (_focus_center - _body.position) / _pixels_per_design
+		kept = (_focus_center - _body_scan_pos(_body)) / _pixels_per_design
 	_focus_center = size * 0.5
 	_update_dim()
 	if not _mask_ready:
@@ -499,11 +607,25 @@ func _on_resized() -> void:
 func _update_dim() -> void:
 	if _dim_material == null or _body == null or _pixels_per_design <= 0.0:
 		return
-	_dim_material.set_shader_parameter("focus_local_px", _focus_center - _body.position)
-	_dim_material.set_shader_parameter("body_size", _body.size)
-	_dim_material.set_shader_parameter("radius_px", _focus_radius)
-	_dim_material.set_shader_parameter("feather_px", 2.0 * _DIM_BLUR_DESIGN * _pixels_per_design)
-	_dim_material.set_shader_parameter("dim_color", _DIM)
+	_apply_dim_params(_dim_material, _body_scan_pos(_body))
+	if _symmetric and _dim_material_b != null and _body_b != null:
+		_apply_dim_params(_dim_material_b, _body_scan_pos(_body_b))
+
+
+func _apply_dim_params(mat: ShaderMaterial, body_scan: Vector2) -> void:
+	var feather := 2.0 * _DIM_BLUR_DESIGN * _pixels_per_design
+	mat.set_shader_parameter("body_size", _body.size)
+	mat.set_shader_parameter("radius_px", _focus_radius)
+	mat.set_shader_parameter("feather_px", feather)
+	mat.set_shader_parameter("dim_color", _DIM)
+	if _symmetric:
+		mat.set_shader_parameter("dual_focus", 1.0)
+		mat.set_shader_parameter("focus_local_px", _focus_left() - body_scan)
+		mat.set_shader_parameter("focus_b_local_px", _focus_right() - body_scan)
+	else:
+		mat.set_shader_parameter("dual_focus", 0.0)
+		mat.set_shader_parameter("focus_local_px", _focus_center - body_scan)
+		mat.set_shader_parameter("focus_b_local_px", Vector2.ZERO)
 
 
 func _head_anchor() -> Vector2:
@@ -511,25 +633,102 @@ func _head_anchor() -> Vector2:
 	return _crown + Vector2(0.0, drop)
 
 
+func _focus_left() -> Vector2:
+	return _focus_center - Vector2(_focus_offset, 0.0)
+
+
+func _focus_right() -> Vector2:
+	return _focus_center + Vector2(_focus_offset, 0.0)
+
+
+## Body position in this control's space, through its clipping pane when symmetric.
+func _body_scan_pos(body: Control) -> Vector2:
+	var parent := body.get_parent() as Control
+	return body.position if parent == self else parent.position + body.position
+
+
+func _set_body_scan_pos(body: Control, scan_pos: Vector2) -> void:
+	var parent := body.get_parent() as Control
+	body.position = scan_pos if parent == self else scan_pos - parent.position
+
+
 func _set_body_position(pos: Vector2) -> void:
-	_body.position = pos
+	_set_body_scan_pos(_body, pos)
 	_update_dim()
+
+
+func _set_body_positions(pos_l: Vector2, pos_r: Vector2) -> void:
+	_set_body_scan_pos(_body, pos_l)
+	if _body_b != null:
+		_set_body_scan_pos(_body_b, pos_r)
+	_update_dim()
+
+
+## Both views sit here while _view_shift is zero, so they read as one figure.
+func _shared_pose() -> Vector2:
+	return _focus_center - Vector2(_crown.x, _scan_y) * _pixels_per_design
+
+
+func _apply_pose() -> void:
+	var pos := _shared_pose()
+	var shift := Vector2(_view_shift, 0.0)
+	_set_body_positions(pos + shift, pos - shift)
+
+
+func _drag_symmetric(delta: Vector2) -> void:
+	if _pixels_per_design <= 0.0 or _bounds.size == Vector2.ZERO:
+		return
+	_scan_y = clampf(
+		_scan_y - delta.y / _pixels_per_design, _bounds.position.y, _bounds.end.y
+	)
+	_spread_by(delta.x if _drag_side_left else -delta.x)
+	_apply_pose()
+
+
+## amount is how far each scanned point moves outward from the midline, in screen pixels.
+## Outward: the focuses separate until they stop overlapping, then the views take over.
+## Inward: the views return to the shared pose first, then the focuses close in.
+func _spread_by(amount: float) -> void:
+	amount = minf(amount, _max_spread() - _focus_offset - _view_shift)
+	if amount > 0.0:
+		var apart_at := _focus_radius + _overlap_margin * 0.5
+		var to_focus := clampf(apart_at - _focus_offset, 0.0, amount)
+		_focus_offset += to_focus
+		_view_shift += amount - to_focus
+	elif amount < 0.0:
+		var from_views := minf(-amount, _view_shift)
+		_view_shift -= from_views
+		_focus_offset = maxf(_focus_offset + amount + from_views, 0.0)
+
+
+func _max_spread() -> float:
+	var half := minf(_crown.x - _bounds.position.x, _bounds.end.x - _crown.x)
+	return maxf(half, 0.0) * _pixels_per_design
 
 
 func _clamp_body() -> void:
 	if _bounds.size == Vector2.ZERO:
 		return
-	var local := (_focus_center - _body.position) / _pixels_per_design
+	var local := (_focus_center - _body_scan_pos(_body)) / _pixels_per_design
 	var end := _bounds.end
 	local.x = clampf(local.x, _bounds.position.x, end.x)
 	local.y = clampf(local.y, _bounds.position.y, end.y)
 	_set_body_position(_focus_center - local * _pixels_per_design)
 
 
-func _try_spawn() -> bool:
+func _focus_centers_design() -> Array[Vector2]:
+	var centers: Array[Vector2] = []
+	if not _symmetric or _body_b == null:
+		centers.append(_focus_center_design())
+		return centers
+	centers.append((_focus_left() - _body_scan_pos(_body)) / _pixels_per_design)
+	centers.append((_focus_right() - _body_scan_pos(_body_b)) / _pixels_per_design)
+	return centers
+
+
+func _try_spawn_at(focus_design: Vector2) -> bool:
 	if not _mask_ready:
 		return false
-	var focus_design := _focus_center_design()
 	var focus_r := _focus_radius / _pixels_per_design
 	for _attempt in _SENSATION_SPAWN_ATTEMPTS:
 		var radius := randf_range(_radius_min, _radius_max)
@@ -550,8 +749,7 @@ func _try_spawn() -> bool:
 	return false
 
 
-func _add_sensation(center: Vector2, radius: float) -> void:
-	var diameter := _snap_diameter(radius)
+func _make_sensation_holder(center: Vector2, diameter: float) -> Control:
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = Vector2(diameter, diameter)
@@ -568,54 +766,63 @@ func _add_sensation(center: Vector2, radius: float) -> void:
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mark.size = holder.size
 	holder.add_child(mark)
-	_live.add_child(holder)
+	return holder
+
+
+func _add_sensation(center: Vector2, radius: float) -> void:
+	var diameter := _snap_diameter(radius)
 	var sensation := _Sensation.new()
-	sensation.holder = holder
-	sensation.circle = circle
 	sensation.center = center
 	sensation.radius = radius
 	sensation.cluster_index = _nearest_cluster_index(center)
-	if _equanimity:
-		var sensation_name := _name_for_cluster(sensation.cluster_index, center)
-		mark.text = sensation_name
-		mark.add_theme_font_size_override(
-			&"font_size",
-			maxi(int(_mark_font_size(sensation_name, diameter) * _NAME_FONT_SCALE), 11)
-		)
-		mark.add_theme_color_override(&"font_outline_color", _NAME_OUTLINE)
-		mark.add_theme_constant_override(&"outline_size", 4)
-		holder.set_meta(&"name_center", center)
-		circle.color = _sample_color(sensation.cluster_index)
-	else:
-		mark.text = "?"
-		mark.add_theme_font_size_override(&"font_size", _mark_font_size("?", diameter))
+	for live in _live_layers():
+		var holder := _make_sensation_holder(center, diameter)
+		live.add_child(holder)
+		sensation.holders.append(holder)
+		var mark := _label_of(holder)
+		if _equanimity:
+			_set_name_text(mark, _name_for_cluster(sensation.cluster_index, center), diameter)
+			mark.add_theme_color_override(&"font_outline_color", _NAME_OUTLINE)
+			mark.add_theme_constant_override(&"outline_size", 4)
+			holder.set_meta(&"name_center", center)
+			_circle_of(holder).color = _sample_color(sensation.cluster_index)
+		else:
+			mark.text = "?"
+			mark.add_theme_font_size_override(&"font_size", _mark_font_size("?", diameter))
+	if not _equanimity:
 		sensation.time_left = randf_range(_delay_min, _delay_max)
 	_sensations.append(sensation)
+
+
+func _set_name_text(mark: Label, text: String, diameter: float) -> void:
+	mark.text = text
+	mark.add_theme_font_size_override(
+		&"font_size",
+		maxi(int(_mark_font_size(text, diameter) * _NAME_FONT_SCALE), 11)
+	)
 
 
 func _observe(sensation: _Sensation) -> void:
 	_sensations.erase(sensation)
 	_stamp(sensation.center, sensation.radius)
-	var holder := sensation.holder
-	var mark := _label_of(holder)
-	if mark == null:
-		_leave_blue_copy(sensation)
-		if is_instance_valid(holder):
-			holder.queue_free()
+	var holders := _holders_of(sensation)
+	if holders.is_empty():
 		return
-	holder.set_meta(&"name_center", sensation.center)
-	var name := _name_for_point(sensation.center)
-	mark.text = name
-	mark.add_theme_font_size_override(
-		&"font_size",
-		maxi(int(_mark_font_size(name, holder.size.x) * _NAME_FONT_SCALE), 11)
-	)
-	_fade_resolved_mark(sensation, holder, mark)
+	var region_name := _name_for_point(sensation.center)
+	for holder in holders:
+		holder.set_meta(&"name_center", sensation.center)
+		_set_name_text(_label_of(holder), region_name, holder.size.x)
+	_fade_resolved_mark(sensation)
 
 
 func _leave_blue_copy(sensation: _Sensation) -> void:
-	var holder := sensation.holder
-	if not is_instance_valid(holder):
+	var layers := _coverage_layers()
+	for i in mini(layers.size(), sensation.holders.size()):
+		_add_blue_copy(layers[i], sensation.holders[i])
+
+
+func _add_blue_copy(coverage: Control, holder: Control) -> void:
+	if coverage == null or not is_instance_valid(holder):
 		return
 	var copy := ColorRect.new()
 	copy.color = _BLUE
@@ -623,7 +830,45 @@ func _leave_blue_copy(sensation: _Sensation) -> void:
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.position = holder.position
 	copy.size = holder.size
-	_coverage.add_child(copy)
+	coverage.add_child(copy)
+
+
+func _free_sensation_holders(sensation: _Sensation) -> void:
+	for holder in _holders_of(sensation):
+		holder.queue_free()
+
+
+func _holders_of(sensation: _Sensation) -> Array[Control]:
+	var found: Array[Control] = []
+	for holder in sensation.holders:
+		if is_instance_valid(holder):
+			found.append(holder)
+	return found
+
+
+func _circles_of(sensation: _Sensation) -> Array[ColorRect]:
+	var found: Array[ColorRect] = []
+	for holder in _holders_of(sensation):
+		found.append(_circle_of(holder))
+	return found
+
+
+func _circle_of(holder: Control) -> ColorRect:
+	return holder.get_child(0) as ColorRect
+
+
+func _live_layers() -> Array[Control]:
+	var layers: Array[Control] = [_live]
+	if _live_b != null:
+		layers.append(_live_b)
+	return layers
+
+
+func _coverage_layers() -> Array[Control]:
+	var layers: Array[Control] = [_coverage]
+	if _coverage_b != null:
+		layers.append(_coverage_b)
+	return layers
 
 
 func _stamp(center: Vector2, radius: float) -> void:
@@ -688,14 +933,15 @@ func _notification(what: int) -> void:
 func _refresh_sensation_names() -> void:
 	if _live == null:
 		return
-	for child in _live.get_children():
-		var holder := child as Control
-		if holder == null or not holder.has_meta(&"name_center"):
-			continue
-		var mark := _label_of(holder)
-		if mark == null:
-			continue
-		mark.text = _name_for_point(holder.get_meta(&"name_center"))
+	for live in _live_layers():
+		for child in live.get_children():
+			var holder := child as Control
+			if holder == null or not holder.has_meta(&"name_center"):
+				continue
+			var mark := _label_of(holder)
+			if mark == null:
+				continue
+			mark.text = _name_for_point(holder.get_meta(&"name_center"))
 
 
 func _draw_cluster_markers() -> void:
@@ -709,12 +955,12 @@ func _draw_cluster_markers() -> void:
 func _name_for_point(point: Vector2) -> String:
 	var index := _nearest_cluster_index(point)
 	if index < 0:
-		return SensationNames.random_label()
+		return SensationNames.random_label(_subtle_chance)
 	return SensationNames.label_at(_name_clusters[index].pick)
 
 
 func _focus_center_design() -> Vector2:
-	return (_focus_center - _body.position) / _pixels_per_design
+	return (_focus_center - _body_scan_pos(_body)) / _pixels_per_design
 
 
 func _snap_diameter(radius_design: float) -> float:
@@ -799,25 +1045,35 @@ func _sample_color(cluster_index: int) -> Color:
 
 func _update_equanimity_colors() -> void:
 	for sensation in _sensations:
-		if sensation.circle == null:
-			continue
-		sensation.circle.color = _sample_color(sensation.cluster_index)
+		var color := _sample_color(sensation.cluster_index)
+		for circle in _circles_of(sensation):
+			circle.color = color
 
 
 func _sensation_in_focus(sensation: _Sensation) -> bool:
 	if _pixels_per_design <= 0.0:
 		return false
 	var focus_r := _focus_radius / _pixels_per_design
-	return sensation.center.distance_to(_focus_center_design()) <= focus_r
+	for focus_design in _focus_centers_design():
+		if sensation.center.distance_to(focus_design) <= focus_r:
+			return true
+	return false
 
 
+## Only the copy in the pane under the pointer is visible there, so only it is hit-tested.
 func _sensation_at_local(local: Vector2) -> _Sensation:
+	var on_right := _body_b != null and local.x >= _focus_center.x
+	var body := _body_b if on_right else _body
+	var view := 1 if on_right else 0
 	for i in range(_sensations.size() - 1, -1, -1):
 		var sensation := _sensations[i]
-		if not _sensation_in_focus(sensation) or not is_instance_valid(sensation.holder):
+		if not _sensation_in_focus(sensation) or view >= sensation.holders.size():
 			continue
-		var center_px := _body.position + sensation.holder.position + sensation.holder.size * 0.5
-		if local.distance_to(center_px) <= sensation.holder.size.x * 0.5:
+		var holder := sensation.holders[view]
+		if not is_instance_valid(holder):
+			continue
+		var center_px := _body_scan_pos(body) + holder.position + holder.size * 0.5
+		if local.distance_to(center_px) <= holder.size.x * 0.5:
 			return sensation
 	return null
 
@@ -857,33 +1113,28 @@ func _play_anicca() -> void:
 func _resolve_sensation(sensation: _Sensation) -> void:
 	_sensations.erase(sensation)
 	_kill_reject(sensation)
-	if is_instance_valid(sensation.holder):
-		sensation.holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_set_outline_amount(sensation.circle, 0.0)
+	for circle in _circles_of(sensation):
+		_set_outline_amount(circle, 0.0)
 	_stamp(sensation.center, sensation.radius)
-	var holder := sensation.holder
-	var mark := _label_of(holder)
-	if mark == null:
-		_leave_blue_copy(sensation)
-		if is_instance_valid(holder):
-			holder.queue_free()
+	if _holders_of(sensation).is_empty():
 		return
-	_fade_resolved_mark(sensation, holder, mark)
+	_fade_resolved_mark(sensation)
 
 
-func _fade_resolved_mark(sensation: _Sensation, holder: Control, mark: Label) -> void:
-	mark.pivot_offset = holder.size * 0.5
+func _fade_resolved_mark(sensation: _Sensation) -> void:
 	var epoch := _coverage_epoch
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(mark, "scale", Vector2(2.2, 2.2), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(mark, "modulate:a", 0.0, 0.45)
+	for holder in _holders_of(sensation):
+		var mark := _label_of(holder)
+		mark.pivot_offset = holder.size * 0.5
+		tween.tween_property(mark, "scale", Vector2(2.2, 2.2), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(mark, "modulate:a", 0.0, 0.45)
 	tween.set_parallel(false)
 	tween.tween_callback(func() -> void:
 		if epoch == _coverage_epoch:
 			_leave_blue_copy(sensation)
-		if is_instance_valid(holder):
-			holder.queue_free()
+		_free_sensation_holders(sensation)
 	)
 
 
@@ -893,16 +1144,15 @@ func _flash_cluster(sensation: _Sensation) -> void:
 
 
 func _flash_outline(sensation: _Sensation) -> void:
-	var circle := sensation.circle
-	if not is_instance_valid(circle):
-		return
 	_kill_reject(sensation)
-	_set_outline_amount(circle, 1.0)
+	var circles := _circles_of(sensation)
+	var apply := func(amount: float) -> void:
+		for circle in circles:
+			_set_outline_amount(circle, amount)
+	apply.call(1.0)
 	var tween := create_tween()
 	sensation.reject_tween = tween
-	tween.tween_method(func(amount: float) -> void:
-		_set_outline_amount(circle, amount)
-	, 1.0, 0.0, _reject_sec)
+	tween.tween_method(apply, 1.0, 0.0, _reject_sec)
 
 
 func _set_outline_amount(circle: ColorRect, amount: float) -> void:

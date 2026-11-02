@@ -148,6 +148,12 @@ msgstr ""
 msgid "STAGE_VIPASSANA_3_GOAL"
 msgstr ""
 
+msgid "STAGE_VIPASSANA_3_INSTRUCTIONS"
+msgstr ""
+
+msgid "STAGE_VIPASSANA_3_BACKGROUND"
+msgstr ""
+
 msgid "STAGE_VIPASSANA_4_GOAL"
 msgstr ""
 

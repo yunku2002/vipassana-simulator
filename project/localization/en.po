@@ -181,7 +181,22 @@ msgstr ""
 "By practicing Vipassana, you practice being mindful of impermanence in your everyday life and finding peace."
 
 msgid "STAGE_VIPASSANA_3_GOAL"
-msgstr "Observe symmetrically when possible."
+msgstr "Observe symmetrically."
+
+msgid "STAGE_VIPASSANA_3_INSTRUCTIONS"
+msgstr "Observe sensations in the same area on the left and right sides of the body simultaneously."
+
+msgid "STAGE_VIPASSANA_3_BACKGROUND"
+msgstr ""
+"Now that you are fairly accustomed to Vipassana meditation, "
+"you move on to observing both sides of the body simultaneously. "
+"Instead of observing a part of the body on one side first, then on the other, "
+"you observe the same part on both the left and right sides at the same time. "
+"Not only does this make observation more efficient, "
+"but it also serves as a step towards “free flow,” to be practiced next.\n\n"
+"It is advised that you perform this only when both sides have similar subtle sensations. "
+"Otherwise, and from time to time, fall back to part-by-part observation. "
+"(But for this game, there is no need to worry about it.)"
 
 msgid "STAGE_VIPASSANA_4_GOAL"
 msgstr "Keeping equanimity towards gross sensations will break them down into subtle ones."

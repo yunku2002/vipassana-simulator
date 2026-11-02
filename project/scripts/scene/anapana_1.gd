@@ -16,19 +16,6 @@ var _gauge_value: float = 0.0
 func _ready() -> void:
 	super._ready()
 	intro_finished.connect(_on_breath_intro_finished)
-	_refresh_gameplay_texts()
-
-
-func _notification(what: int) -> void:
-	super._notification(what)
-	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
-		_refresh_gameplay_texts()
-
-
-func _refresh_shell_texts() -> void:
-	super._refresh_shell_texts()
-	if is_node_ready():
-		_refresh_gameplay_texts()
 
 
 func _refresh_gameplay_texts() -> void:

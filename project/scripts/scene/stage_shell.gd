@@ -61,6 +61,12 @@ func _refresh_shell_texts() -> void:
 	_win_title.text = tr("STAGE_CLEAR")
 	_btn_continue.text = tr("BTN_CONTINUE")
 	_btn_menu.text = tr("BTN_MENU")
+	_refresh_gameplay_texts()
+
+
+## Stage-specific labels. Refreshed together with the shell's labels.
+func _refresh_gameplay_texts() -> void:
+	pass
 
 
 func _on_intro_finished() -> void:

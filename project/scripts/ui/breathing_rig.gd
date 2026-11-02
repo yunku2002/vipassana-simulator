@@ -21,7 +21,10 @@ enum Phase { INHALE, EXHALE }
 @export_range(0.0, 1.0) var rest_fullness: float = 0.33
 
 @export_group("Nostril chevrons")
-@export var show_chevrons: bool = true
+@export var show_chevrons: bool = true:
+	set(value):
+		show_chevrons = value
+		_apply_chevron_visibility()
 ## Full inhale↔exhale crossfade time. Blend is 0.5 at each phase change (half before, half after).
 @export var breath_crossfade_duration: float = 1.2
 

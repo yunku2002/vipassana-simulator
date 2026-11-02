@@ -1,0 +1,91 @@
+[gd_scene format=3 uid="uid://nw6wwy8vq5qq"]
+
+[ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
+[ext_resource type="Script" uid="uid://bfh6hsjuihak5" path="res://scripts/scene/vipassana_3.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
+[ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="4_gauge"]
+[ext_resource type="Script" uid="uid://by6dmys40h1xh" path="res://scripts/ui/body_scan.gd" id="5_scan"]
+
+[node name="Vipassana3" unique_id=1906409051 instance=ExtResource("1_shell")]
+script = ExtResource("2_script")
+focus_overlap_margin = 40.0
+default_hold_second = 2.0
+charged_hold_second = 0.3
+subtle_chance = 0.75
+default_hold_first = 0.5
+charged_hold_first = 1.4
+color_blend_sec = 0.3
+reject_outline_sec = 0.5
+coverage_goal = 85.0
+once_more_hold = 2.0
+body_scale = 3.0
+focus_radius = 185.0
+region_radius_min = 15.0
+region_radius_max = 20.0
+cluster_count = 20
+cluster_separation = 250.0
+sensation_interval_min = 0.1
+sensation_interval_max = 0.2
+sensation_delay_min = 0.3
+sensation_delay_max = 0.7
+second_pass_pace = 2.0
+thought_interval_min = 10.0
+thought_interval_max = 20.0
+thought_hold_to_clear_sec = 0.5
+stage_scene_path = "res://scenes/vipassana_3.tscn"
+intro_prefix = "STAGE_VIPASSANA_3"
+
+[node name="Scan" type="Control" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="1" unique_id=338540940]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -24.0
+offset_top = -24.0
+offset_right = 24.0
+offset_bottom = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("5_scan")
+
+[node name="CornerFigure" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1683210741 instance=ExtResource("3_figure")]
+custom_minimum_size = Vector2(307.2, 307.2)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -8.0
+offset_top = -323.2
+offset_right = 299.2
+offset_bottom = -16.0
+grow_vertical = 0
+rig_display_scale = 0.3
+
+[node name="GaugeBox" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="3" unique_id=1827541927 instance=ExtResource("4_gauge")]
+layout_mode = 1
+
+[node name="ThoughtLayer" type="Control" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="4" unique_id=1601967736]
+z_index = 5
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OnceMore" type="Label" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="5" unique_id=249692078]
+visible = false
+z_index = 6
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(1, 0.98, 0.9, 1)
+theme_override_constants/outline_size = 16
+theme_override_font_sizes/font_size = 72
+text = "Once more"
+horizontal_alignment = 1
+vertical_alignment = 1
