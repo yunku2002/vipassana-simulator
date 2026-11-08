@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://bfjs45uugiw6d"]
+
+[ext_resource type="PackedScene" uid="uid://nw6wwy8vq5qq" path="res://scenes/vipassana_3.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://dktk7ris2wrr0" path="res://scripts/scene/vipassana_4.gd" id="2_script"]
+
+[node name="Vipassana4" unique_id=1412468290 instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+subtle_chance = 0.95
+thoughts_enabled = false
+stage_scene_path = "res://scenes/vipassana_4.tscn"
+intro_prefix = "STAGE_VIPASSANA_4"

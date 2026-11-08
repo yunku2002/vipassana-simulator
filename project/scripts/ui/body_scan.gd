@@ -103,6 +103,8 @@ var _spawn_enabled: bool = false
 var _equanimity: bool = false
 var _subtle_chance: float = 0.5
 var _press_enabled: bool = false
+## When set, each cluster resolves itself at the start and midpoint of its default-color hold.
+var _auto_resolve: bool = false
 var _default_hold: float = 0.5
 var _charged_hold: float = 1.4
 var _blend_sec: float = 0.3
@@ -111,6 +113,9 @@ var _color_time: float = 0.0
 var _coverage_epoch: int = 0
 var _anicca_player: AudioStreamPlayer
 var _anicca_streams: Array[AudioStream] = []
+## Play on every Nth resolution. 1 plays every time.
+var _anicca_stride: int = 1
+var _anicca_resolves: int = 0
 
 var _pixels_per_design: float = 1.0
 var _focus_center: Vector2 = Vector2.ZERO
@@ -241,7 +246,10 @@ func advance(delta: float) -> void:
 	if _timers_paused or not _mask_ready:
 		return
 	if _equanimity:
+		var prev_color_time := _color_time
 		_color_time += delta
+		if _auto_resolve:
+			_resolve_crossed_default_marks(prev_color_time)
 		_update_equanimity_colors()
 	else:
 		var finished: Array[_Sensation] = []
@@ -321,6 +329,16 @@ func set_reject_outline_sec(seconds: float) -> void:
 
 func set_press_enabled(enabled: bool) -> void:
 	_press_enabled = enabled
+
+
+## The cluster still resolves on a manual press. This only adds the unattended marks.
+func set_auto_resolve(enabled: bool) -> void:
+	_auto_resolve = enabled
+
+
+## resolutions_per_play is how many cluster resolutions happen for each anicca.
+func set_anicca_stride(resolutions_per_play: int) -> void:
+	_anicca_stride = maxi(resolutions_per_play, 1)
 
 
 ## Drops sensations that were never resolved. They leave no coverage.
@@ -1016,10 +1034,49 @@ func _charged_color(cluster_index: int) -> Color:
 
 
 func _phase_time(cluster_index: int) -> float:
+	return _phase_time_at(cluster_index, _color_time)
+
+
+func _phase_time_at(cluster_index: int, color_time: float) -> float:
 	var phase := 0.0
 	if cluster_index >= 0 and cluster_index < _name_clusters.size():
 		phase = _name_clusters[cluster_index].phase
-	return fposmod(_color_time + phase, maxf(_cycle_length(), 0.001))
+	return fposmod(color_time + phase, maxf(_cycle_length(), 0.001))
+
+
+## True when this frame's clock step passed mark, measured from the start of the color cycle.
+func _crossed_cycle_mark(cluster_index: int, prev_color_time: float, mark: float) -> bool:
+	var cycle := maxf(_cycle_length(), 0.001)
+	var phase := 0.0
+	if cluster_index >= 0 and cluster_index < _name_clusters.size():
+		phase = _name_clusters[cluster_index].phase
+	var elapsed := _color_time - prev_color_time
+	if elapsed <= 0.0:
+		return false
+	var dist := fposmod(mark - phase - prev_color_time, cycle)
+	if dist == 0.0:
+		dist = cycle
+	return dist <= elapsed
+
+
+func _resolve_crossed_default_marks(prev_color_time: float) -> void:
+	var seen: Dictionary = {}
+	var triggers: Array[_Sensation] = []
+	var midpoint := _default_hold * 0.5
+	for sensation in _sensations:
+		var index := sensation.cluster_index
+		if index >= 0:
+			if seen.has(index):
+				continue
+			seen[index] = true
+		if (
+			_crossed_cycle_mark(index, prev_color_time, 0.0)
+			or _crossed_cycle_mark(index, prev_color_time, midpoint)
+		):
+			triggers.append(sensation)
+	for sensation in triggers:
+		if sensation in _sensations:
+			_resolve_cluster(sensation)
 
 
 func _is_default_hold(cluster_index: int) -> bool:
@@ -1096,6 +1153,9 @@ func _resolve_cluster(sensation: _Sensation) -> void:
 
 
 func _play_anicca() -> void:
+	_anicca_resolves += 1
+	if _anicca_resolves % _anicca_stride != 0:
+		return
 	if _anicca_player == null:
 		_anicca_player = AudioStreamPlayer.new()
 		_anicca_player.bus = &"Master"

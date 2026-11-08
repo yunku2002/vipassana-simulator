@@ -2,6 +2,7 @@ class_name ThoughtStage
 extends StageShell
 
 @export_group("Thoughts")
+@export var thoughts_enabled: bool = true
 @export var thought_interval_min: float
 @export var thought_interval_max: float
 @export var thought_hold_to_clear_sec: float
@@ -20,10 +21,11 @@ var _holding_elapsed: float = 0.0
 
 
 func _ready() -> void:
-	_thought_timer = randf_range(thought_interval_min, thought_interval_max)
-	ThoughtBubble.prewarm_trail_dots()
-	_ensure_cloud_ready()
 	_corner.get_rig().show_chevrons = false
+	if thoughts_enabled:
+		_thought_timer = randf_range(thought_interval_min, thought_interval_max)
+		ThoughtBubble.prewarm_trail_dots()
+		_ensure_cloud_ready()
 	super._ready()
 
 
@@ -33,6 +35,8 @@ func _refresh_gameplay_texts() -> void:
 
 
 func _advance_thoughts(delta: float) -> void:
+	if not thoughts_enabled:
+		return
 	_ensure_cloud_ready()
 	_update_thought_spawning(delta)
 	_update_thought_hold(delta)

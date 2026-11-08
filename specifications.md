@@ -36,11 +36,9 @@ A Godot-based sequence of minigames based on the 10-day introductory meditation 
 - Anapana-3: Observe the sensations around the nostrils and the upper lip.
 - Anapana-4: Observe the fainter sensations on the narrower area: the philtrum.
 - Vipassana-1: Observe the sensations of the entire body, part by part.
-- Vipassana-2: Be mindful of impermanence and do not generate craving or aversion towards sensations.
-- Vipassana-3: Observe symmetrically when possible.
-- Vipassana-4: Keeping equanimity towards gross sensations will break them down into subtle ones.
-- Vipassana-5: Observe as a "free flow" when possible.
-- Vipassana-6: Observe into the body.
+- Vipassana-2: Avoid generating craving or aversion towards sensations.
+- Vipassana-3: Observe symmetrically.
+- Vipassana-4: Observe as a free flow.
 - Metta Bhavana: Share the goodwill with all beings.
 
 ## Stage Mechanics
@@ -83,3 +81,7 @@ The coverage goal once again should be met twice as in Vipassana-1. The differen
 
 Same as Vipassana-2, but with two areas of focus always positioned horizontally symmetrically. At the beginning of each pass, they coincide at the head. The standing figure is also composed of two symmetric views split down the middle, initially appearing as one because one view only shows the left side and the other, only the right. When the player drags one of the figures (views), both figures move the same vertically, and in opposite directions horizontally. But they only move horizontally when the areas of focus do not. When the areas of focus overlap (with some margin), they are the ones that move horizontally instead of the figures (in the other direction than the corresponding figure would have moved). They don't cross the center, so when the drag would get the areas of focus past the center, nothing actually moves horizontally. Each view also shouldn't show the other side, so when needed, the areas of focus move closer instead.
 Random thoughts and clusters behave the same way. Sensations appear in each area of focus at the same time, so almost twice as fast. They should be pressed while in any one of the two areas of focus. Subtle sensations appear 75% of the time, instead of 50%. The coverage goal is the same. The first pass shares the sensation color timing of Vipassana-2's second pass. In the second pass, the default color time lasts longer and the other, shorter.
+
+### Vipassana-4
+
+Same as Vipassana-3, but sensations expand and fade away automatically at the start and midpoint of each default color phase, whether or not they are in the areas of focus. The sound effect is played only once every three times. The player only needs to move the areas of focus, but sensations may still be pressed as before. 95% of sensations are subtle, thoughts no longer appear, and clusters work the same way. The two passes share the timings of Vipassana-3's second pass with no difference between them.
