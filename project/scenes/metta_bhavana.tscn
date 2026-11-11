@@ -8,9 +8,9 @@
 script = ExtResource("2_script")
 aura_start_radius = 48.0
 aura_clear_radius = 688.0
-releases_required = 40
-release_speed = 240.0
-max_travel_speed = 480.0
+releases_required = 24
+release_speed = 180.0
+max_travel_speed = 360.0
 drag_radius = 192.0
 stage_scene_path = "res://scenes/metta_bhavana.tscn"
 intro_prefix = "STAGE_METTA_BHAVANA"

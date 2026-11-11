@@ -214,7 +214,7 @@ msgstr ""
 "거친 감각은 계속해서 일어날 것이고, 이는 고통으로 이어지는 반응을 제거할 기회가 더 생기는 것뿐입니다."
 
 msgid "STAGE_METTA_BHAVANA_GOAL"
-msgstr "모든 존재와 선의를 나누십시오."
+msgstr "모든 존재와 선한 마음을 나누십시오."
 
 msgid "STAGE_METTA_BHAVANA_INSTRUCTIONS"
 msgstr "몸 내부에서부터 바깥으로 향하는 드래그 동작을 반복해 자애심을 발산하세요."

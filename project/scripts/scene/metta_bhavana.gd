@@ -47,6 +47,8 @@ const _SPEED_WINDOW := 0.1
 const _SPARK_SIZE := 48.0
 const _TRAIL_COLOR := Color(1.0, 0.62, 0.18, 1.0)
 const _OUTWARD_DEGREES := 45.0
+## Angle from the spiral's outward ray to its path. About a golden spiral.
+const _SPIRAL_BEARING := deg_to_rad(73.0)
 
 @export var aura_start_radius : float
 @export var aura_clear_radius : float
@@ -66,6 +68,7 @@ var _releases := 0
 var _radius: float
 var _drawn_radius: float
 var _held: _Spark
+var _copies: Array[_Spark] = []
 var _sparks: Array[_Spark] = []
 var _samples: Array[Vector2] = []
 var _sample_times: Array[float] = []
@@ -87,6 +90,12 @@ class _Spark:
 	var fading := false
 	var head_life := 0.0
 	var head: ColorRect
+	var copy_angle := 0.0
+	var spiraling := false
+	var pole := Vector2.ZERO
+	var radius := 0.0
+	var radial_angle := 0.0
+	var bearing := 0.0
 	var points: Array[Vector2] = []
 	var ages: Array[float] = []
 
@@ -115,6 +124,8 @@ func _on_stage_intro_finished() -> void:
 func _process(delta: float) -> void:
 	_drawn_radius = lerpf(_drawn_radius, _radius, 1.0 - exp(-8.0 * delta))
 	_advance_rings(delta)
+	if _held != null:
+		_sync_copies(_held)
 	_advance_sparks(delta)
 	_layer.queue_redraw()
 
@@ -170,7 +181,7 @@ func _begin(pos: Vector2) -> void:
 	_samples.clear()
 	_sample_times.clear()
 	_note(pos)
-	_place(spark)
+	_add_copies()
 
 
 func _follow(pos: Vector2) -> void:
@@ -178,7 +189,6 @@ func _follow(pos: Vector2) -> void:
 		return
 	_held.pos = pos
 	_note(pos)
-	_place(_held)
 
 
 func _release(pos: Vector2) -> void:
@@ -188,7 +198,9 @@ func _release(pos: Vector2) -> void:
 	_held = null
 	spark.pos = pos
 	_note(pos)
+	_sync_copies(spark)
 	var vel := _velocity()
+	var curvature := _release_curvature()
 	_samples.clear()
 	_sample_times.clear()
 	var offset := pos - _center()
@@ -200,11 +212,14 @@ func _release(pos: Vector2) -> void:
 			vel = vel.normalized() * max_travel_speed
 		spark.flying = true
 		spark.vel = vel
-		_place(spark)
-		_add_copies(spark)
+		_set_spiral(spark, curvature)
+		_launch_copies(spark, curvature)
 		_grow()
 	else:
 		_begin_fade(spark)
+		for copy in _copies:
+			_begin_fade(copy)
+		_copies.clear()
 
 
 func _grow() -> void:
@@ -236,22 +251,33 @@ func _copy_count() -> int:
 	return 0
 
 
-func _add_copies(origin: _Spark) -> void:
+func _add_copies() -> void:
+	_copies.clear()
 	var count := _copy_count()
 	if count == 0:
 		return
-	var center := _center()
-	var offset := origin.pos - center
 	var rays := count + 1
 	for i in count:
-		var angle := TAU * float(i + 1) / float(rays)
 		var spark := _Spark.new()
-		spark.pos = center + offset.rotated(angle)
-		spark.vel = origin.vel.rotated(angle)
-		spark.flying = true
+		spark.copy_angle = TAU * float(i + 1) / float(rays)
 		_attach_head(spark)
 		_sparks.append(spark)
-		_place(spark)
+		_copies.append(spark)
+
+
+func _sync_copies(origin: _Spark) -> void:
+	var center := _center()
+	var offset := origin.pos - center
+	for spark in _copies:
+		spark.pos = center + offset.rotated(spark.copy_angle)
+
+
+func _launch_copies(origin: _Spark, curvature: float) -> void:
+	for spark in _copies:
+		spark.vel = origin.vel.rotated(spark.copy_angle)
+		spark.flying = true
+		_set_spiral(spark, curvature)
+	_copies.clear()
 
 
 func _advance_sparks(delta: float) -> void:
@@ -259,7 +285,10 @@ func _advance_sparks(delta: float) -> void:
 	var done: Array[_Spark] = []
 	for spark in _sparks:
 		if spark.flying:
-			spark.pos += spark.vel * delta
+			if spark.spiraling:
+				_advance_spiral(spark, delta)
+			else:
+				spark.pos += spark.vel * delta
 			_stamp(spark, delta)
 			_place(spark)
 			if not view.has_point(spark.pos):
@@ -414,6 +443,92 @@ func _note(pos: Vector2) -> void:
 	while _sample_times.size() > 1 and _sample_times[0] < cutoff:
 		_sample_times.remove_at(0)
 		_samples.remove_at(0)
+
+
+func _set_spiral(spark: _Spark, curvature: float) -> void:
+	spark.spiraling = false
+	if absf(curvature) <= 0.0001 or spark.vel.length_squared() <= 0.0001:
+		return
+	var bearing := signf(curvature) * _SPIRAL_BEARING
+	var radius := sin(_SPIRAL_BEARING) / absf(curvature)
+	var outward := spark.vel.normalized().rotated(-bearing)
+	spark.pole = spark.pos - outward * radius
+	spark.radius = radius
+	spark.radial_angle = outward.angle()
+	spark.bearing = bearing
+	spark.spiraling = true
+
+
+func _advance_spiral(spark: _Spark, delta: float) -> void:
+	var speed := spark.vel.length()
+	if speed <= 0.0 or delta <= 0.0:
+		return
+	if _outward_after(spark, delta):
+		_step_spiral(spark, delta)
+		return
+	var lo := 0.0
+	var hi := delta
+	for _i in 8:
+		var mid := (lo + hi) * 0.5
+		if _outward_after(spark, mid):
+			lo = mid
+		else:
+			hi = mid
+	_step_spiral(spark, lo)
+	spark.spiraling = false
+	spark.pos += spark.vel * (delta - lo)
+
+
+func _step_spiral(spark: _Spark, delta: float) -> void:
+	var step := _spiral_after(spark, delta)
+	spark.pos = step.pos
+	spark.vel = step.vel
+	spark.radius = step.radius
+	spark.radial_angle = step.radial_angle
+
+
+func _spiral_after(spark: _Spark, delta: float) -> Dictionary:
+	var speed := spark.vel.length()
+	var grown := spark.radius + cos(spark.bearing) * speed * delta
+	if grown <= spark.radius:
+		return {
+			"pos": spark.pos,
+			"vel": spark.vel,
+			"radius": spark.radius,
+			"radial_angle": spark.radial_angle,
+		}
+	var angle := spark.radial_angle + tan(spark.bearing) * log(grown / spark.radius)
+	var outward := Vector2.from_angle(angle)
+	return {
+		"pos": spark.pole + outward * grown,
+		"vel": outward.rotated(spark.bearing) * speed,
+		"radius": grown,
+		"radial_angle": angle,
+	}
+
+
+func _outward_after(spark: _Spark, delta: float) -> bool:
+	var step := _spiral_after(spark, delta)
+	return (step.pos - _center()).dot(step.vel) > 0.0
+
+
+func _release_curvature() -> float:
+	if _samples.size() < 3:
+		return 0.0
+	var turn := 0.0
+	var length := 0.0
+	var prev := _samples[1] - _samples[0]
+	for i in range(2, _samples.size()):
+		var step := _samples[i] - _samples[i - 1]
+		if prev.length_squared() < 1.0 or step.length_squared() < 1.0:
+			prev = step
+			continue
+		turn += prev.angle_to(step)
+		length += step.length()
+		prev = step
+	if length < 1.0:
+		return 0.0
+	return turn / length
 
 
 func _velocity() -> Vector2:

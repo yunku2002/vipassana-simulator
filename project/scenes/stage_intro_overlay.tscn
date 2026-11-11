@@ -44,6 +44,7 @@ text = "Anapana-1"
 horizontal_alignment = 1
 
 [node name="Goal" type="Label" parent="Center/Panel/Margin/VBox" unique_id=1292192163]
+custom_minimum_size = Vector2(504, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Goal"
