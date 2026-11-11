@@ -32,8 +32,11 @@ msgstr "Back"
 msgid "OPTIONS_LANGUAGE"
 msgstr "Language"
 
-msgid "OPTIONS_VOLUME"
-msgstr "Volume"
+msgid "OPTIONS_MUSIC"
+msgstr "Music"
+
+msgid "OPTIONS_SOUND_EFFECTS"
+msgstr "Sound Effects"
 
 msgid "BTN_CLOSE"
 msgstr "Close"

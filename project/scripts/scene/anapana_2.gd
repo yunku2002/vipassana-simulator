@@ -13,14 +13,11 @@ extends Anapana1
 
 const _THOUGHT_INACTIVE_GRAY := 0.8
 const _THOUGHT_PLACEMENT_ATTEMPTS := 8
-const _CLOUD_READY_TARGET := 1
 
 @onready var _thought_layer: Control = $Margin/Body/ThoughtLayer
 
 var _thought_timer: float = 0.0
 var _thoughts_erased: int = 0
-var _ready_clouds: Array[Image] = []
-var _cloud_bakes_pending: int = 0
 var _thought_bubbles: Array[ThoughtBubble] = []
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
@@ -30,13 +27,10 @@ func _ready() -> void:
 	_gauge_value = 100.0
 	_gauge_bar.value = 100.0
 	_thought_timer = _next_thought_interval()
-	ThoughtBubble.prewarm_trail_dots()
-	_ensure_cloud_ready()
 	super._ready()
 
 
 func _on_before_gauge_update(delta: float) -> void:
-	_ensure_cloud_ready()
 	_update_thought_spawning(delta)
 	_update_thought_hold(delta)
 	_update_thought_visuals()
@@ -79,11 +73,8 @@ func _update_thought_spawning(delta: float) -> void:
 		return
 	if _thought_bubbles.size() >= _active_thought_cap():
 		return
-	if _ready_clouds.is_empty():
-		return
-	_spawn_thought(_ready_clouds.pop_front())
+	_spawn_thought()
 	_thought_timer = _next_thought_interval()
-	_ensure_cloud_ready()
 
 
 func _next_thought_interval() -> float:
@@ -103,29 +94,15 @@ func _active_thought_cap() -> int:
 	return 1 if _thoughts_erased <= 0 else 5
 
 
-func _ensure_cloud_ready() -> void:
-	while _ready_clouds.size() + _cloud_bakes_pending < _CLOUD_READY_TARGET:
-		_cloud_bakes_pending += 1
-		ThoughtBubble.bake_cloud_texture_async(_on_cloud_bake_finished)
-
-
-func _on_cloud_bake_finished(img: Image) -> void:
-	_cloud_bakes_pending = maxi(_cloud_bakes_pending - 1, 0)
-	if not is_inside_tree():
-		return
-	_ready_clouds.append(img)
-
-
-func _spawn_thought(img: Image) -> void:
+func _spawn_thought() -> void:
 	var subject_index := ThoughtSubjects.random_index()
 	var text := ThoughtSubjects.text_at(subject_index)
-	var cloud_tex := ImageTexture.create_from_image(img)
 	var bubble := ThoughtBubble.new()
 	_thought_layer.add_child(bubble)
 
 	var cloud_top_left := _pick_thought_local_position()
 	var anchor_layer := _thought_layer.get_global_transform_with_canvas().affine_inverse() * _breathing.get_head_global_position()
-	bubble.configure(subject_index, text, cloud_top_left, anchor_layer, cloud_tex)
+	bubble.configure(subject_index, text, cloud_top_left, anchor_layer)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))
 	bubble.reveal_finished.connect(_on_thought_revealed)
 

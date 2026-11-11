@@ -12,33 +12,59 @@ const CLOUD_SIZE := Vector2(
 	(_INNER_ROWS + _MARGIN_CELLS * 2) * _CELL_SIZE
 )
 
-const _FILL := Color(0.97, 0.96, 0.94, 1.0)
-const _STROKE := Color(0.38, 0.38, 0.38, 1.0)
 const _AA := 1.0
 const _STROKE_W := 2.0
 const _TRAIL_RADIUS_NEAR := 12.0
 const _TRAIL_RADIUS_FAR := 5.0
 const _ARC_BULGE_RATIO := 0.32
 const TRAIL_LEAD_TIME := 1.0
-const _BAKE_SCALE := 2
-const DEBUG_SHOW_CIRCLES := false
 
-static var _dot_tex_cache: Dictionary[float, ImageTexture] = {}
-static var _trail_dots_prewarmed: Dictionary = {}
+const _SHAPE_SHADER := """
+shader_type canvas_item;
+render_mode unshaded, blend_mix;
+
+uniform vec3 circles[10];
+uniform int circle_count;
+uniform vec2 shape_size;
+uniform vec4 fill_color = vec4(0.97, 0.96, 0.94, 1.0);
+uniform vec4 stroke_color = vec4(0.38, 0.38, 0.38, 1.0);
+uniform float aa;
+uniform float stroke_w;
+
+void fragment() {
+	vec4 tint = COLOR;
+	vec2 p = UV * shape_size;
+	float sdf = 100000.0;
+	for (int i = 0; i < 10; i++) {
+		if (i < circle_count) {
+			sdf = min(sdf, length(p - circles[i].xy) - circles[i].z);
+		}
+	}
+	float fill_a = (1.0 - smoothstep(-aa, 0.0, sdf)) * fill_color.a;
+	float half_stroke = stroke_w * 0.5;
+	float stroke_a = (1.0 - smoothstep(half_stroke, half_stroke + aa, abs(sdf))) * stroke_color.a;
+	float out_a = stroke_a + fill_a * (1.0 - stroke_a);
+	vec3 out_rgb = stroke_color.rgb * stroke_a + fill_color.rgb * fill_a * (1.0 - stroke_a);
+	if (out_a > 0.004) {
+		out_rgb /= out_a;
+	}
+	COLOR = vec4(out_rgb, out_a) * tint;
+}
+"""
+
+static var _shape_shader: Shader
 
 var subject_index: int = -1
 
 var _label: Label
-var _cloud_tex: ImageTexture
-var _trail_centers: PackedVector2Array = PackedVector2Array()
-var _trail_radii: PackedFloat32Array = PackedFloat32Array()
+var _cloud: ColorRect
+var _trail_dots: Array[ColorRect] = []
 var _trail_reveal_elapsed: float = 0.0
 
 
 func _init() -> void:
 	clip_contents = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	custom_minimum_size = CLOUD_SIZE
 	size = CLOUD_SIZE
 
@@ -94,27 +120,11 @@ static func random_top_left_in_zone(
 	)
 
 
-static func prewarm_trail_dots() -> void:
-	# Prewarm only the minimum trail dot layout; other counts bake on-demand and are cached by radius.
-	var key := "2"
-	if _trail_dots_prewarmed.get(key, false):
-		return
-	var count := 2
-	for i in count:
-		var t := float(i + 1) / float(count + 1)
-		_dot_texture(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t))
-	_trail_dots_prewarmed[key] = true
-
-
-static func bake_cloud_texture_async(on_ready: Callable, display_scale: float = 1.0) -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var cloud_size := CLOUD_SIZE * display_scale
-	var circles: Array[Dictionary] = _cloud_layout_random(rng, cloud_size)
-	WorkerThreadPool.add_task(func() -> void:
-		var img: Image = _bake_cloud_image(circles, cloud_size)
-		on_ready.call_deferred(img)
-	)
+static func _shape_shader_resource() -> Shader:
+	if _shape_shader == null:
+		_shape_shader = Shader.new()
+		_shape_shader.code = _SHAPE_SHADER
+	return _shape_shader
 
 
 func configure(
@@ -122,7 +132,6 @@ func configure(
 	text: String,
 	cloud_top_left_layer: Vector2,
 	anchor_layer: Vector2,
-	cloud_tex: ImageTexture,
 	display_scale: float = 1.0
 ) -> void:
 	subject_index = index
@@ -131,21 +140,22 @@ func configure(
 	position = cloud_top_left_layer
 	size = display
 	custom_minimum_size = display
-	_cloud_tex = cloud_tex
 	_label.add_theme_font_size_override("font_size", int(round(16.0 * display_scale)))
+	_build_cloud(display)
 
 	var anchor_local := anchor_layer - cloud_top_left_layer
 	var attach := _attach_point_toward(anchor_local, display)
 	# Larger dots need fewer of them. Always at least 2.
 	var trail_count := maxi(floori((attach.distance_to(anchor_local) ** 0.8) * 0.08 / display_scale), 2)
-	_trail_centers.clear()
-	_trail_radii = PackedFloat32Array()
 	for i in trail_count:
 		var t := float(i + 1) / float(trail_count + 1)
-		_trail_centers.append(_quadratic_bezier(attach, anchor_local, t))
-		_trail_radii.append(lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t) * display_scale)
+		var center := _quadratic_bezier(attach, anchor_local, t)
+		var radius := lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t) * display_scale
+		_trail_dots.append(_make_dot(center, radius))
 	_trail_reveal_elapsed = 0.0
 	_label.visible = false
+	move_child(_label, get_child_count() - 1)
+	move_child(_cloud, get_child_count() - 2)
 	set_process(true)
 
 
@@ -158,47 +168,65 @@ func is_cloud_revealed() -> bool:
 
 
 func _reveal_step() -> float:
-	return TRAIL_LEAD_TIME / float(_trail_centers.size())
+	return TRAIL_LEAD_TIME / float(_trail_dots.size())
 
 
 func _process(delta: float) -> void:
 	_trail_reveal_elapsed = minf(_trail_reveal_elapsed + delta, TRAIL_LEAD_TIME)
-	queue_redraw()
+	for i in _trail_dots.size():
+		_trail_dots[i].visible = _trail_reveal_elapsed >= _trail_dot_reveal_time(i)
 	if not is_cloud_revealed():
 		return
+	_cloud.visible = true
 	_label.visible = true
 	set_process(false)
 	reveal_finished.emit()
 
 
 func _trail_dot_reveal_time(index: int) -> float:
-	var count := _trail_centers.size()
+	var count := _trail_dots.size()
 	return _reveal_step() * float(count - 1 - index)
 
 
-func _draw() -> void:
-	for i in _trail_centers.size():
-		if _trail_reveal_elapsed < _trail_dot_reveal_time(i):
-			continue
-		_draw_trail_dot(_trail_centers[i], _trail_radii[i])
-	if not is_cloud_revealed():
-		return
-	draw_texture_rect(_cloud_tex, Rect2(Vector2.ZERO, size), false)
+func _build_cloud(cloud_size: Vector2) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var rect := ColorRect.new()
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.size = cloud_size
+	rect.material = _shape_material(_cloud_layout_random(rng, cloud_size), cloud_size)
+	rect.visible = false
+	_cloud = rect
+	add_child(rect)
 
 
-func _draw_trail_dot(center: Vector2, radius: float) -> void:
-	var tex := _dot_texture(radius)
-	var draw_size := Vector2.ONE * (radius + _STROKE_W + _AA) * 2.0
-	draw_texture_rect(tex, Rect2(center - draw_size * 0.5, draw_size), false)
+func _make_dot(center: Vector2, radius: float) -> ColorRect:
+	var draw_size := (radius + _STROKE_W + _AA) * 2.0
+	var rect := ColorRect.new()
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.size = Vector2.ONE * draw_size
+	rect.position = center - rect.size * 0.5
+	rect.material = _shape_material([{"pos": rect.size * 0.5, "r": radius}], rect.size)
+	rect.visible = false
+	add_child(rect)
+	return rect
 
 
-static func _dot_texture(radius: float) -> ImageTexture:
-	var key := snappedf(radius, 0.05)
-	if _dot_tex_cache.has(key):
-		return _dot_tex_cache[key]
-	var tex := ImageTexture.create_from_image(_bake_dot_image(radius))
-	_dot_tex_cache[key] = tex
-	return tex
+func _shape_material(circles: Array, shape_size: Vector2) -> ShaderMaterial:
+	var packed := PackedVector3Array()
+	packed.resize(10)
+	for i in mini(circles.size(), 10):
+		var circle: Dictionary = circles[i]
+		var pos: Vector2 = circle["pos"]
+		packed[i] = Vector3(pos.x, pos.y, float(circle["r"]))
+	var mat := ShaderMaterial.new()
+	mat.shader = _shape_shader_resource()
+	mat.set_shader_parameter("circles", packed)
+	mat.set_shader_parameter("circle_count", mini(circles.size(), 10))
+	mat.set_shader_parameter("shape_size", shape_size)
+	mat.set_shader_parameter("aa", _AA)
+	mat.set_shader_parameter("stroke_w", _STROKE_W)
+	return mat
 
 
 static func _max_circle_radius(pos: Vector2, cloud_size: Vector2) -> float:
@@ -271,91 +299,3 @@ static func _attach_point_toward(anchor_local: Vector2, cloud_size: Vector2) -> 
 	if to_anchor.y >= 0.0:
 		return Vector2(center.x, cloud_size.y * EDGE)
 	return Vector2(center.x, cloud_size.y * INNER)
-
-
-static func _circle_sdf(p: Vector2, center: Vector2, radius: float) -> float:
-	return p.distance_to(center) - radius
-
-
-static func _fill_alpha(sdf: float) -> float:
-	return 1.0 - smoothstep(-_AA, 0.0, sdf)
-
-
-static func _stroke_alpha(sdf: float) -> float:
-	var half_stroke := _STROKE_W * 0.5
-	return 1.0 - smoothstep(half_stroke, half_stroke + _AA, absf(sdf))
-
-
-static func _layer(tint: Color, alpha: float) -> Color:
-	var c := tint
-	c.a = alpha
-	return c
-
-
-static func _source_over(src: Color, dst: Color) -> Color:
-	if src.a < 0.004:
-		return dst
-	if dst.a < 0.004:
-		return src
-	var inv := 1.0 - src.a
-	var out_a := src.a + dst.a * inv
-	var out := (src * src.a + dst * dst.a * inv) / out_a
-	out.a = out_a
-	return out
-
-
-static func _sdf_color(sdf: float) -> Color:
-	return _source_over(
-		_layer(_STROKE, _stroke_alpha(sdf)),
-		_layer(_FILL, _fill_alpha(sdf))
-	)
-
-
-static func _debug_cloud_color(circles: Array, p: Vector2) -> Color:
-	var fill := Color(0.0, 0.0, 0.0, 0.0)
-	var stroke := Color(0.0, 0.0, 0.0, 0.0)
-	for c: Dictionary in circles:
-		var sdf: float = _circle_sdf(p, c.pos, c.r)
-		fill = _source_over(_layer(_FILL, _fill_alpha(sdf)), fill)
-		stroke = _source_over(_layer(_STROKE, _stroke_alpha(sdf)), stroke)
-	return _source_over(stroke, fill)
-
-
-static func _bake_dot_image(radius: float) -> Image:
-	var outer := radius + _STROKE_W + _AA
-	var logic := maxi(ceili(outer * 2.0 * _BAKE_SCALE), 2)
-	var center := Vector2(logic * 0.5, logic * 0.5)
-	var img := Image.create(logic, logic, false, Image.FORMAT_RGBA8)
-	var inv := 1.0 / float(_BAKE_SCALE)
-	for y in logic:
-		for x in logic:
-			var p := (Vector2(x + 0.5, y + 0.5) - center) * inv
-			var col := _sdf_color(_circle_sdf(p, Vector2.ZERO, radius))
-			if col.a < 0.004:
-				continue
-			img.set_pixel(x, y, col)
-	return img
-
-
-static func _bake_cloud_image(circles: Array, cloud_size: Vector2) -> Image:
-	var logic_w := maxi(ceili(cloud_size.x * _BAKE_SCALE), 2)
-	var logic_h := maxi(ceili(cloud_size.y * _BAKE_SCALE), 2)
-	var img := Image.create(logic_w, logic_h, false, Image.FORMAT_RGBA8)
-	var inv := 1.0 / float(_BAKE_SCALE)
-
-	for y in logic_h:
-		for x in logic_w:
-			var p := Vector2(x + 0.5, y + 0.5) * inv
-			var col: Color
-			if DEBUG_SHOW_CIRCLES:
-				col = _debug_cloud_color(circles, p)
-			else:
-				var sdf := INF
-				for c: Dictionary in circles:
-					sdf = minf(sdf, _circle_sdf(p, c.pos, c.r))
-				col = _sdf_color(sdf)
-			if col.a < 0.004:
-				continue
-			img.set_pixel(x, y, col)
-
-	return img

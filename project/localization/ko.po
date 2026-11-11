@@ -32,8 +32,11 @@ msgstr "뒤로"
 msgid "OPTIONS_LANGUAGE"
 msgstr "언어"
 
-msgid "OPTIONS_VOLUME"
-msgstr "음량"
+msgid "OPTIONS_MUSIC"
+msgstr "음악"
+
+msgid "OPTIONS_SOUND_EFFECTS"
+msgstr "효과음"
 
 msgid "BTN_CLOSE"
 msgstr "닫기"

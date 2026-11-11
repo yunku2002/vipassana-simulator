@@ -7,14 +7,10 @@ extends StageShell
 @export var thought_interval_max: float
 @export var thought_hold_to_clear_sec: float
 
-const _CLOUD_READY_TARGET := 1
-
 @onready var _thought_layer: Control = $Margin/Body/ThoughtLayer
 @onready var _corner: BreathingFigure = $Margin/Body/CornerFigure
 
 var _thought_timer: float = 0.0
-var _ready_clouds: Array[Image] = []
-var _cloud_bakes_pending: int = 0
 var _thought_bubble: ThoughtBubble
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
@@ -24,8 +20,6 @@ func _ready() -> void:
 	_corner.get_rig().show_chevrons = false
 	if thoughts_enabled:
 		_thought_timer = randf_range(thought_interval_min, thought_interval_max)
-		ThoughtBubble.prewarm_trail_dots()
-		_ensure_cloud_ready()
 	super._ready()
 
 
@@ -37,7 +31,6 @@ func _refresh_gameplay_texts() -> void:
 func _advance_thoughts(delta: float) -> void:
 	if not thoughts_enabled:
 		return
-	_ensure_cloud_ready()
 	_update_thought_spawning(delta)
 	_update_thought_hold(delta)
 	_update_thought_visuals()
@@ -75,30 +68,13 @@ func _update_thought_spawning(delta: float) -> void:
 	_thought_timer -= delta
 	if _thought_timer > 0.0:
 		return
-	if _ready_clouds.is_empty():
-		return
-	_spawn_thought(_ready_clouds.pop_front())
+	_spawn_thought()
 	_thought_timer = randf_range(thought_interval_min, thought_interval_max)
-	_ensure_cloud_ready()
 
 
-func _ensure_cloud_ready() -> void:
-	while _ready_clouds.size() + _cloud_bakes_pending < _CLOUD_READY_TARGET:
-		_cloud_bakes_pending += 1
-		ThoughtBubble.bake_cloud_texture_async(_on_cloud_bake_finished, _thought_scale())
-
-
-func _on_cloud_bake_finished(img: Image) -> void:
-	_cloud_bakes_pending = maxi(_cloud_bakes_pending - 1, 0)
-	if not is_inside_tree():
-		return
-	_ready_clouds.append(img)
-
-
-func _spawn_thought(img: Image) -> void:
+func _spawn_thought() -> void:
 	var subject_index := ThoughtSubjects.random_index()
 	var text := ThoughtSubjects.text_at(subject_index)
-	var cloud_tex := ImageTexture.create_from_image(img)
 	var bubble := ThoughtBubble.new()
 	_thought_layer.add_child(bubble)
 	var cloud_top_left := _pick_thought_local_position()
@@ -111,7 +87,6 @@ func _spawn_thought(img: Image) -> void:
 		text,
 		cloud_top_left,
 		anchor_layer,
-		cloud_tex,
 		_thought_scale()
 	)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))

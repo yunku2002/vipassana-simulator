@@ -1158,7 +1158,7 @@ func _play_anicca() -> void:
 		return
 	if _anicca_player == null:
 		_anicca_player = AudioStreamPlayer.new()
-		_anicca_player.bus = &"Master"
+		_anicca_player.bus = &"SFX"
 		add_child(_anicca_player)
 		for path in _ANICCA_PATHS:
 			var stream := load(path) as AudioStream

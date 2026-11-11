@@ -10,9 +10,12 @@ const ICON_SOUND_OFF := "🔇"
 @onready var _lang_label: Label = $Center/Panel/Margin/VBox/LangRow/LangLabel
 @onready var _lang_en: Button = $Center/Panel/Margin/VBox/LangRow/BtnEn
 @onready var _lang_ko: Button = $Center/Panel/Margin/VBox/LangRow/BtnKo
-@onready var _vol_label: Label = $Center/Panel/Margin/VBox/VolRow/VolLabel
-@onready var _slider: HSlider = $Center/Panel/Margin/VBox/VolRow/VolumeSlider
-@onready var _mute: Button = $Center/Panel/Margin/VBox/VolRow/BtnMute
+@onready var _music_label: Label = $Center/Panel/Margin/VBox/MusicRow/MusicLabel
+@onready var _music_slider: HSlider = $Center/Panel/Margin/VBox/MusicRow/MusicSlider
+@onready var _music_mute: Button = $Center/Panel/Margin/VBox/MusicRow/BtnMusicMute
+@onready var _sfx_label: Label = $Center/Panel/Margin/VBox/SfxRow/SfxLabel
+@onready var _sfx_slider: HSlider = $Center/Panel/Margin/VBox/SfxRow/SfxSlider
+@onready var _sfx_mute: Button = $Center/Panel/Margin/VBox/SfxRow/BtnSfxMute
 @onready var _close: Button = $Center/Panel/Margin/VBox/BtnClose
 
 ## True when this overlay was the one to pause the tree, so we only unpause on close
@@ -28,12 +31,15 @@ func _ready() -> void:
 	if not get_tree().paused:
 		get_tree().paused = true
 		_paused_by_self = true
-	_slider.value_changed.connect(_on_slider_changed)
-	_mute.toggled.connect(_on_mute_toggled)
+	_music_slider.value_changed.connect(_on_music_slider_changed)
+	_music_mute.toggled.connect(_on_music_mute_toggled)
+	_sfx_slider.value_changed.connect(_on_sfx_slider_changed)
+	_sfx_mute.toggled.connect(_on_sfx_mute_toggled)
 	_lang_en.pressed.connect(func() -> void: _set_lang("en"))
 	_lang_ko.pressed.connect(func() -> void: _set_lang("ko"))
 	_close.pressed.connect(_on_close_pressed)
-	_setup_volume_slider()
+	_setup_volume_slider(_music_slider)
+	_setup_volume_slider(_sfx_slider)
 	_sync_from_settings()
 	_refresh_texts()
 
@@ -49,12 +55,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func _setup_volume_slider() -> void:
-	_slider.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	_slider.custom_minimum_size.y = maxf(_slider.custom_minimum_size.y, 28.0)
-	_slider.add_theme_icon_override(&"grabber", _make_grabber_icon(false))
-	_slider.add_theme_icon_override(&"grabber_highlight", _make_grabber_icon(true))
-	_slider.add_theme_icon_override(&"grabber_disabled", _make_grabber_icon(false))
+func _setup_volume_slider(slider: HSlider) -> void:
+	slider.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	slider.custom_minimum_size.y = maxf(slider.custom_minimum_size.y, 28.0)
+	slider.add_theme_icon_override(&"grabber", _make_grabber_icon(false))
+	slider.add_theme_icon_override(&"grabber_highlight", _make_grabber_icon(true))
+	slider.add_theme_icon_override(&"grabber_disabled", _make_grabber_icon(false))
 
 
 ## Matches [StyleBoxFlat_btn_normal] / [StyleBoxFlat_btn_hover] in main_theme.tres.
@@ -104,21 +110,25 @@ static func _make_grabber_icon(hover: bool) -> ImageTexture:
 
 
 func _sync_from_settings() -> void:
-	_slider.set_value_no_signal(GameSettings.master_linear * 100.0)
-	_mute.set_pressed_no_signal(GameSettings.muted)
-	_update_mute_icon()
+	_music_slider.set_value_no_signal(GameSettings.music_linear * 100.0)
+	_music_mute.set_pressed_no_signal(GameSettings.music_muted)
+	_sfx_slider.set_value_no_signal(GameSettings.sfx_linear * 100.0)
+	_sfx_mute.set_pressed_no_signal(GameSettings.sfx_muted)
+	_update_mute_icon(_music_mute)
+	_update_mute_icon(_sfx_mute)
 	_update_lang_buttons()
 
 
 func _refresh_texts() -> void:
 	_title.text = tr("BTN_OPTIONS")
 	_lang_label.text = tr("OPTIONS_LANGUAGE")
-	_vol_label.text = tr("OPTIONS_VOLUME")
+	_music_label.text = tr("OPTIONS_MUSIC")
+	_sfx_label.text = tr("OPTIONS_SOUND_EFFECTS")
 	_close.text = tr("BTN_CLOSE")
 
 
-func _update_mute_icon() -> void:
-	_mute.text = ICON_SOUND_OFF if _mute.button_pressed else ICON_SOUND_ON
+func _update_mute_icon(button: Button) -> void:
+	button.text = ICON_SOUND_OFF if button.button_pressed else ICON_SOUND_ON
 
 
 func _update_lang_buttons() -> void:
@@ -138,17 +148,30 @@ func _set_lang(code: String) -> void:
 	_update_lang_buttons()
 
 
-func _on_slider_changed(v: float) -> void:
-	GameSettings.set_master_linear(v / 100.0)
-	if GameSettings.muted:
-		GameSettings.set_muted(false)
-		_mute.set_pressed_no_signal(false)
-		_update_mute_icon()
+func _on_music_slider_changed(v: float) -> void:
+	GameSettings.set_music_linear(v / 100.0)
+	if GameSettings.music_muted:
+		GameSettings.set_music_muted(false)
+		_music_mute.set_pressed_no_signal(false)
+		_update_mute_icon(_music_mute)
 
 
-func _on_mute_toggled(on: bool) -> void:
-	GameSettings.set_muted(on)
-	_update_mute_icon()
+func _on_sfx_slider_changed(v: float) -> void:
+	GameSettings.set_sfx_linear(v / 100.0)
+	if GameSettings.sfx_muted:
+		GameSettings.set_sfx_muted(false)
+		_sfx_mute.set_pressed_no_signal(false)
+		_update_mute_icon(_sfx_mute)
+
+
+func _on_music_mute_toggled(on: bool) -> void:
+	GameSettings.set_music_muted(on)
+	_update_mute_icon(_music_mute)
+
+
+func _on_sfx_mute_toggled(on: bool) -> void:
+	GameSettings.set_sfx_muted(on)
+	_update_mute_icon(_sfx_mute)
 
 
 func _on_close_pressed() -> void:

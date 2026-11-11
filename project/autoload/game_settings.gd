@@ -3,8 +3,10 @@ extends Node
 const SETTINGS_PATH := "user://settings.cfg"
 const SECTION := "game"
 
-var master_linear: float = 0.8
-var muted: bool = false
+var music_linear: float = 0.8
+var music_muted: bool = false
+var sfx_linear: float = 0.8
+var sfx_muted: bool = false
 var locale: String = "en"
 ## Index into [StageRegistry.STAGES] for the next stage to launch from title, or -1 when unset.
 var next_stage_index: int = -1
@@ -20,8 +22,10 @@ func load_settings() -> void:
 	var cf := ConfigFile.new()
 	if cf.load(SETTINGS_PATH) != OK:
 		return
-	master_linear = clampf(cf.get_value(SECTION, "master_linear", master_linear), 0.0, 1.0)
-	muted = bool(cf.get_value(SECTION, "muted", muted))
+	music_linear = clampf(float(cf.get_value(SECTION, "music_linear", music_linear)), 0.0, 1.0)
+	music_muted = bool(cf.get_value(SECTION, "music_muted", music_muted))
+	sfx_linear = clampf(float(cf.get_value(SECTION, "sfx_linear", sfx_linear)), 0.0, 1.0)
+	sfx_muted = bool(cf.get_value(SECTION, "sfx_muted", sfx_muted))
 	locale = str(cf.get_value(SECTION, "locale", locale))
 	next_stage_index = clampi(int(cf.get_value(SECTION, "next_stage_index", next_stage_index)), -1, StageRegistry.stage_count() - 1)
 
@@ -29,8 +33,10 @@ func load_settings() -> void:
 func save_settings() -> void:
 	var cf := ConfigFile.new()
 	cf.load(SETTINGS_PATH)
-	cf.set_value(SECTION, "master_linear", master_linear)
-	cf.set_value(SECTION, "muted", muted)
+	cf.set_value(SECTION, "music_linear", music_linear)
+	cf.set_value(SECTION, "music_muted", music_muted)
+	cf.set_value(SECTION, "sfx_linear", sfx_linear)
+	cf.set_value(SECTION, "sfx_muted", sfx_muted)
 	cf.set_value(SECTION, "locale", locale)
 	cf.set_value(SECTION, "next_stage_index", next_stage_index)
 	cf.save(SETTINGS_PATH)
@@ -59,14 +65,26 @@ func set_next_stage_after(index: int) -> void:
 	set_next_stage(current_index + 1)
 
 
-func set_master_linear(v: float) -> void:
-	master_linear = clampf(v, 0.0, 1.0)
+func set_music_linear(v: float) -> void:
+	music_linear = clampf(v, 0.0, 1.0)
 	_apply_audio()
 	save_settings()
 
 
-func set_muted(m: bool) -> void:
-	muted = m
+func set_music_muted(m: bool) -> void:
+	music_muted = m
+	_apply_audio()
+	save_settings()
+
+
+func set_sfx_linear(v: float) -> void:
+	sfx_linear = clampf(v, 0.0, 1.0)
+	_apply_audio()
+	save_settings()
+
+
+func set_sfx_muted(m: bool) -> void:
+	sfx_muted = m
 	_apply_audio()
 	save_settings()
 
@@ -78,14 +96,18 @@ func set_locale(code: String) -> void:
 
 
 func _apply_audio() -> void:
-	var bus := AudioServer.get_bus_index("Master")
+	_apply_bus("Music", music_linear, music_muted)
+	_apply_bus("SFX", sfx_linear, sfx_muted)
+
+
+func _apply_bus(bus_name: String, linear: float, mute: bool) -> void:
+	var bus := AudioServer.get_bus_index(bus_name)
 	if bus < 0:
 		return
-	AudioServer.set_bus_mute(bus, muted)
-	if muted:
+	AudioServer.set_bus_mute(bus, mute)
+	if mute:
 		return
-	var db := linear_to_db(master_linear)
-	AudioServer.set_bus_volume_db(bus, db)
+	AudioServer.set_bus_volume_db(bus, linear_to_db(linear))
 
 
 func _apply_locale() -> void:

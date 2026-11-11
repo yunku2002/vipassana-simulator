@@ -27,7 +27,8 @@ A Godot-based sequence of minigames based on the 10-day introductory meditation 
 ## Options
 
 - Language: English (default) or Korean
-- Volume: A single slider that controls all audio and a mute button
+- Music: A single slider that controls the music volume and a mute button
+- Sound Effects: A single slider that controls the sound effects volume and a mute button
 
 ## Stage Summary
 
