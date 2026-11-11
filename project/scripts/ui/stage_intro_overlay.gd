@@ -14,7 +14,7 @@ const SCENE := preload("res://scenes/stage_intro_overlay.tscn")
 @onready var _intro_root: Control = $Center
 @onready var _background_root: CenterContainer = $BackgroundView
 @onready var _background_title: Label = $BackgroundView/Panel/Margin/VBox/BackgroundTitle
-@onready var _background_block: VBoxContainer = $BackgroundView/Panel/Margin/VBox/Scroll/BackgroundBlock
+@onready var _background_block: VBoxContainer = $BackgroundView/Panel/Margin/VBox/BackgroundBlock
 @onready var _btn_background_back: Button = $BackgroundView/Panel/Margin/VBox/BtnBackgroundBack
 @onready var _body_label_template: Label = $BodyLabelTemplate
 
@@ -128,7 +128,7 @@ func _fill_paragraphs(container: VBoxContainer, text: String) -> void:
 		container.add_child(label)
 
 
-func _split_paragraphs(text: String) -> Array[String]:
+static func _split_paragraphs(text: String) -> Array[String]:
 	# Paragraph breaks are represented by an empty line in the runtime string,
 	# which corresponds to `\n\n` in PO strings.
 	#

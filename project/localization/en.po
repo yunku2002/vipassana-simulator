@@ -213,6 +213,28 @@ msgstr ""
 msgid "STAGE_METTA_BHAVANA_GOAL"
 msgstr "Share the goodwill with all beings."
 
+msgid "STAGE_METTA_BHAVANA_INSTRUCTIONS"
+msgstr "Perform dragging motions from inside your body outwards in order to radiate loving-kindness."
+
+msgid "STAGE_METTA_BHAVANA_BACKGROUND"
+msgstr ""
+"We have reached the end of the exercise. "
+"You practice Metta Bhavana (loving-kindness meditation) at the end of each meditation session. "
+"With a calm mind developed through Vipassana, "
+"you wish for peace and harmony for yourself, your loved ones, and all other beings. "
+"It is a hope that naturally flows from the serenity that you have cultivated.\n\n"
+"“Bhavatu sabba mangalam.”\n"
+"May all beings be happy!"
+
+#. Replaces the Continue button when the final stage is cleared.
+msgid "GOODBYE"
+msgstr ""
+"You are now on the path to enlightenment!\n\n"
+"This concludes the game, but there is much more to learn about Vipassana meditation. "
+"You can start by taking the 10-day course that this game is based on, "
+"organized by S. N. Goenka's Vipassana Research Institute (not affiliated).\n\n"
+"Visit [url=https://dhamma.org]https://dhamma.org[/url] for more information."
+
 msgid "BTN_IN"
 msgstr "Inhaling"
 

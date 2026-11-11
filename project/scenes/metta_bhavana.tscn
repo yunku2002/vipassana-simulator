@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://j3nkhav7oe3i"]
+
+[ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
+[ext_resource type="Script" uid="uid://bs0d0rr0intsd" path="res://scripts/scene/metta_bhavana.gd" id="2_script"]
+[ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
+
+[node name="MettaBhavana" unique_id=921655998 instance=ExtResource("1_shell")]
+script = ExtResource("2_script")
+aura_start_radius = 48.0
+aura_clear_radius = 688.0
+releases_required = 40
+release_speed = 240.0
+max_travel_speed = 480.0
+drag_radius = 192.0
+stage_scene_path = "res://scenes/metta_bhavana.tscn"
+intro_prefix = "STAGE_METTA_BHAVANA"
+
+[node name="Field" type="Control" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="0" unique_id=37183944]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="FigureSlot" type="CenterContainer" parent="Margin/Body/Field" index="0" unique_id=1595956996]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BreathingFigure" parent="Margin/Body/Field/FigureSlot" index="0" unique_id=1314346282 instance=ExtResource("3_figure")]
+layout_mode = 2

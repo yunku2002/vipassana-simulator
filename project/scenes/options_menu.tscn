@@ -35,11 +35,11 @@ theme_override_constants/margin_bottom = 20
 
 [node name="VBox" type="VBoxContainer" parent="Center/Panel/Margin" unique_id=772600950]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 24
 
 [node name="Title" type="Label" parent="Center/Panel/Margin/VBox" unique_id=680005006]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 22
 text = "Options"
 horizontal_alignment = 1
 

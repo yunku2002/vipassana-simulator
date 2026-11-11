@@ -35,17 +35,17 @@ theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="Center/Panel/Margin" unique_id=612870724]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 24
 
 [node name="StageTitle" type="Label" parent="Center/Panel/Margin/VBox" unique_id=866968855]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 22
 text = "Anapana-1"
 horizontal_alignment = 1
 
 [node name="Goal" type="Label" parent="Center/Panel/Margin/VBox" unique_id=1292192163]
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 18
 text = "Goal"
 horizontal_alignment = 1
 autowrap_mode = 3
@@ -53,10 +53,6 @@ autowrap_mode = 3
 [node name="InstructionsBlock" type="VBoxContainer" parent="Center/Panel/Margin/VBox" unique_id=2041522298]
 layout_mode = 2
 theme_override_constants/separation = 12
-
-[node name="ActionsSpacer" type="Control" parent="Center/Panel/Margin/VBox" unique_id=1258177145]
-custom_minimum_size = Vector2(0, 10)
-layout_mode = 2
 
 [node name="ActionsRow" type="HBoxContainer" parent="Center/Panel/Margin/VBox" unique_id=298831741]
 layout_mode = 2
@@ -95,7 +91,7 @@ theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="BackgroundView/Panel/Margin" unique_id=2067206494]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 24
 
 [node name="BackgroundTitle" type="Label" parent="BackgroundView/Panel/Margin/VBox" unique_id=2062383863]
 layout_mode = 2
@@ -103,14 +99,7 @@ theme_override_font_sizes/font_size = 22
 text = "Background"
 horizontal_alignment = 1
 
-[node name="Scroll" type="ScrollContainer" parent="BackgroundView/Panel/Margin/VBox" unique_id=2102448374]
-custom_minimum_size = Vector2(0, 280)
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-
-[node name="BackgroundBlock" type="VBoxContainer" parent="BackgroundView/Panel/Margin/VBox/Scroll" unique_id=793220714]
-custom_minimum_size = Vector2(560, 0)
+[node name="BackgroundBlock" type="VBoxContainer" parent="BackgroundView/Panel/Margin/VBox" unique_id=793220714]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12

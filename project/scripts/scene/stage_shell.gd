@@ -19,6 +19,7 @@ signal intro_finished
 @onready var _btn_confirm_ok: Button = $ExitConfirmLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnConfirm
 @onready var _win_layer: CanvasLayer = $WinLayer
 @onready var _win_title: Label = $WinLayer/Center/Panel/Margin/VBox/WinTitle
+@onready var _goodbye: VBoxContainer = $WinLayer/Center/Panel/Margin/VBox/Goodbye
 @onready var _btn_continue: Button = $WinLayer/Center/Panel/Margin/VBox/BtnContinue
 @onready var _btn_menu: Button = $WinLayer/Center/Panel/Margin/VBox/BtnMenu
 
@@ -61,12 +62,40 @@ func _refresh_shell_texts() -> void:
 	_win_title.text = tr("STAGE_CLEAR")
 	_btn_continue.text = tr("BTN_CONTINUE")
 	_btn_menu.text = tr("BTN_MENU")
+	var final_stage := StageRegistry.is_final(stage_index())
+	_btn_continue.visible = not final_stage
+	_goodbye.visible = final_stage
+	_fill_goodbye(tr("GOODBYE"))
 	_refresh_gameplay_texts()
 
 
 ## Stage-specific labels. Refreshed together with the shell's labels.
 func _refresh_gameplay_texts() -> void:
 	pass
+
+
+const _BODY_COLOR := Color(0.349, 0.302, 0.22)
+
+
+func _fill_goodbye(text: String) -> void:
+	for child in _goodbye.get_children():
+		child.queue_free()
+	for paragraph in StageIntroOverlay._split_paragraphs(text):
+		var label := RichTextLabel.new()
+		label.bbcode_enabled = true
+		label.fit_content = true
+		label.scroll_active = false
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.add_theme_color_override("default_color", _BODY_COLOR)
+		label.add_theme_font_size_override("normal_font_size", 16)
+		label.text = paragraph
+		label.meta_clicked.connect(_on_goodbye_link)
+		_goodbye.add_child(label)
+
+
+func _on_goodbye_link(meta: Variant) -> void:
+	OS.shell_open(str(meta))
 
 
 func _on_intro_finished() -> void:

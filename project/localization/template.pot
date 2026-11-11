@@ -160,6 +160,16 @@ msgstr ""
 msgid "STAGE_METTA_BHAVANA_GOAL"
 msgstr ""
 
+msgid "STAGE_METTA_BHAVANA_INSTRUCTIONS"
+msgstr ""
+
+msgid "STAGE_METTA_BHAVANA_BACKGROUND"
+msgstr ""
+
+#. Replaces the Continue button when the final stage is cleared.
+msgid "GOODBYE"
+msgstr ""
+
 msgid "BTN_IN"
 msgstr ""
 

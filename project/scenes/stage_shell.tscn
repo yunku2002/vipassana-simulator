@@ -89,7 +89,7 @@ theme_override_constants/margin_bottom = 20
 
 [node name="VBox" type="VBoxContainer" parent="ExitConfirmLayer/Center/Panel/Margin" unique_id=2026352688]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 24
 
 [node name="Title" type="Label" parent="ExitConfirmLayer/Center/Panel/Margin/VBox" unique_id=2140768677]
 layout_mode = 2
@@ -135,29 +135,36 @@ layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="WinLayer/Center/Panel" unique_id=73213101]
 layout_mode = 2
-theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 24
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="WinLayer/Center/Panel/Margin" unique_id=1965873341]
 layout_mode = 2
-theme_override_constants/separation = 14
+theme_override_constants/separation = 24
 
 [node name="WinTitle" type="Label" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=1703971998]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 22
 text = "Stage Clear"
 horizontal_alignment = 1
 
+[node name="Goodbye" type="VBoxContainer" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=1703972001]
+visible = false
+custom_minimum_size = Vector2(480, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
 [node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=744248170]
-custom_minimum_size = Vector2(220, 44)
+custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "Continue"
 
 [node name="BtnMenu" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=2072382797]
-custom_minimum_size = Vector2(220, 44)
+custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 size_flags_horizontal = 4
 text = "Main Menu"
