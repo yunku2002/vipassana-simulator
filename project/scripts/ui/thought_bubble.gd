@@ -60,6 +60,9 @@ var _label: Label
 var _cloud: ColorRect
 var _trail_dots: Array[ColorRect] = []
 var _trail_reveal_elapsed: float = 0.0
+## Cloud center relative to the spawn-zone center, in layer pixels.
+var _zone_offset := Vector2.ZERO
+var _trail_anchor := Vector2.ZERO
 
 
 func _init() -> void:
@@ -120,6 +123,10 @@ static func random_top_left_in_zone(
 	)
 
 
+static func to_layer(thought_layer: Control, global_point: Vector2) -> Vector2:
+	return thought_layer.get_global_transform_with_canvas().affine_inverse() * global_point
+
+
 static func _shape_shader_resource() -> Shader:
 	if _shape_shader == null:
 		_shape_shader = Shader.new()
@@ -132,6 +139,7 @@ func configure(
 	text: String,
 	cloud_top_left_layer: Vector2,
 	anchor_layer: Vector2,
+	zone_center_layer: Vector2,
 	display_scale: float = 1.0
 ) -> void:
 	subject_index = index
@@ -140,22 +148,13 @@ func configure(
 	position = cloud_top_left_layer
 	size = display
 	custom_minimum_size = display
+	_zone_offset = position + size * 0.5 - zone_center_layer
 	_label.add_theme_font_size_override("font_size", int(round(16.0 * display_scale)))
 	_build_cloud(display)
-
-	var anchor_local := anchor_layer - cloud_top_left_layer
-	var attach := _attach_point_toward(anchor_local, display)
-	# Larger dots need fewer of them. Always at least 2.
-	var trail_count := maxi(floori((attach.distance_to(anchor_local) ** 0.8) * 0.08 / display_scale), 2)
-	for i in trail_count:
-		var t := float(i + 1) / float(trail_count + 1)
-		var center := _quadratic_bezier(attach, anchor_local, t)
-		var radius := lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t) * display_scale
-		_trail_dots.append(_make_dot(center, radius))
 	_trail_reveal_elapsed = 0.0
 	_label.visible = false
-	move_child(_label, get_child_count() - 1)
-	move_child(_cloud, get_child_count() - 2)
+	_trail_anchor = anchor_layer
+	_rebuild_trail()
 	set_process(true)
 
 
@@ -163,29 +162,77 @@ func set_subject_text(text: String) -> void:
 	_label.text = text
 
 
+## Move the cloud with the spawn zone and aim the trail at the head's current position.
+## The reveal clock is left where it is, so a resize mid-trail does not restart it.
+func follow_zone(zone_center_layer: Vector2, anchor_layer: Vector2, layer_size: Vector2) -> void:
+	var top_left := zone_center_layer + _zone_offset - size * 0.5
+	var max_pos := (layer_size - size).max(Vector2.ZERO)
+	top_left = Vector2(
+		clampf(top_left.x, 0.0, max_pos.x),
+		clampf(top_left.y, 0.0, max_pos.y)
+	)
+	if top_left.is_equal_approx(position) and anchor_layer.is_equal_approx(_trail_anchor):
+		return
+	position = top_left
+	_trail_anchor = anchor_layer
+	_rebuild_trail()
+
+
 func is_cloud_revealed() -> bool:
 	return _trail_reveal_elapsed >= TRAIL_LEAD_TIME
 
 
-func _reveal_step() -> float:
-	return TRAIL_LEAD_TIME / float(_trail_dots.size())
-
-
 func _process(delta: float) -> void:
+	var was_revealed := is_cloud_revealed()
 	_trail_reveal_elapsed = minf(_trail_reveal_elapsed + delta, TRAIL_LEAD_TIME)
-	for i in _trail_dots.size():
-		_trail_dots[i].visible = _trail_reveal_elapsed >= _trail_dot_reveal_time(i)
+	_apply_reveal()
 	if not is_cloud_revealed():
 		return
-	_cloud.visible = true
-	_label.visible = true
 	set_process(false)
-	reveal_finished.emit()
+	if not was_revealed:
+		reveal_finished.emit()
 
 
-func _trail_dot_reveal_time(index: int) -> float:
+## Trail grows from the head (t = 1) toward the cloud (t = 0).
+## Visibility follows that fraction, so the dot count can change without rewinding.
+func _apply_reveal() -> void:
 	var count := _trail_dots.size()
-	return _reveal_step() * float(count - 1 - index)
+	if count == 0:
+		return
+	var revealed := clampf(_trail_reveal_elapsed / TRAIL_LEAD_TIME, 0.0, 1.0)
+	var head_t := float(count) / float(count + 1)
+	var threshold := lerpf(head_t, 0.0, revealed)
+	for i in count:
+		var t := float(i + 1) / float(count + 1)
+		_trail_dots[i].visible = t + 0.0001 >= threshold
+	if is_cloud_revealed():
+		_cloud.visible = true
+		_label.visible = true
+
+
+func _rebuild_trail() -> void:
+	var anchor_local := _trail_anchor - position
+	var attach := _attach_point_toward(anchor_local, size)
+	var display_scale := size.x / CLOUD_SIZE.x
+	var reach := attach.distance_to(anchor_local)
+	var trail_count := maxi(floori((reach ** 0.8) * 0.08 / display_scale), 2)
+	while _trail_dots.size() > trail_count:
+		var last := _trail_dots.size() - 1
+		var extra: ColorRect = _trail_dots[last]
+		_trail_dots.remove_at(last)
+		extra.visible = false
+		extra.queue_free()
+	for i in trail_count:
+		var t := float(i + 1) / float(trail_count + 1)
+		var center := _quadratic_bezier(attach, anchor_local, t)
+		var radius := lerpf(_TRAIL_RADIUS_NEAR, _TRAIL_RADIUS_FAR, t) * display_scale
+		if i >= _trail_dots.size():
+			_trail_dots.append(_make_dot(center, radius))
+		else:
+			_sync_dot(_trail_dots[i], center, radius)
+	_apply_reveal()
+	move_child(_label, get_child_count() - 1)
+	move_child(_cloud, get_child_count() - 2)
 
 
 func _build_cloud(cloud_size: Vector2) -> void:
@@ -201,15 +248,29 @@ func _build_cloud(cloud_size: Vector2) -> void:
 
 
 func _make_dot(center: Vector2, radius: float) -> ColorRect:
-	var draw_size := (radius + _STROKE_W + _AA) * 2.0
 	var rect := ColorRect.new()
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rect.size = Vector2.ONE * draw_size
-	rect.position = center - rect.size * 0.5
-	rect.material = _shape_material([{"pos": rect.size * 0.5, "r": radius}], rect.size)
 	rect.visible = false
 	add_child(rect)
+	_sync_dot(rect, center, radius)
 	return rect
+
+
+func _sync_dot(rect: ColorRect, center: Vector2, radius: float) -> void:
+	var draw_size := (radius + _STROKE_W + _AA) * 2.0
+	rect.size = Vector2.ONE * draw_size
+	rect.position = center - rect.size * 0.5
+	var mid := rect.size * 0.5
+	var mat := rect.material as ShaderMaterial
+	if mat == null:
+		rect.material = _shape_material([{"pos": mid, "r": radius}], rect.size)
+		return
+	var packed := PackedVector3Array()
+	packed.resize(10)
+	packed[0] = Vector3(mid.x, mid.y, radius)
+	mat.set_shader_parameter("circles", packed)
+	mat.set_shader_parameter("circle_count", 1)
+	mat.set_shader_parameter("shape_size", rect.size)
 
 
 func _shape_material(circles: Array, shape_size: Vector2) -> ShaderMaterial:
@@ -275,13 +336,13 @@ func _quadratic_bezier(start: Vector2, end: Vector2, t: float) -> Vector2:
 		return start.lerp(end, t)
 	var mid := start + chord * 0.5
 	var perp := Vector2(-chord.y, chord.x).normalized()
-	## Vertical trail → bulge from left/right; horizontal trail → from above/below.
-	var side: float
-	if absf(chord.y) >= absf(chord.x):
-		side = 1.0 if start.x < end.x else -1.0
-	else:
-		side = 1.0 if start.y < end.y else -1.0
-	var control := mid + perp * chord.length() * _ARC_BULGE_RATIO * side
+	var offset := perp * chord.length() * _ARC_BULGE_RATIO
+	## Bow away from the cloud so the trail leaves the chosen edge
+	## instead of sliding along the silhouette into a corner.
+	var cloud_center := size * 0.5
+	var control := mid + offset
+	if control.distance_squared_to(cloud_center) < (mid - offset).distance_squared_to(cloud_center):
+		control = mid - offset
 	var u := 1.0 - t
 	return u * u * start + 2.0 * u * t * control + t * t * end
 

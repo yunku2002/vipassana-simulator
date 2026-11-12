@@ -7,13 +7,15 @@ const _SvgPath := preload("res://scripts/other/svg_path.gd")
 
 signal region_pressed(region_id: int)
 
-## Square head crop in design pixels (sitting.svg / mouth.svg; mask is 1024²).
-const HEAD_SIZE := 256.0
-const HEAD_ATLAS := Rect2(512.0 - HEAD_SIZE * 0.5, 345.0 - HEAD_SIZE, HEAD_SIZE, HEAD_SIZE)
-## On-screen size of the head crop (1:1 with the cropped raster).
-const DISPLAY_SIZE := Vector2(1280, 1280)
-## Cancels StageShell's bottom margin so the control is flush with the screen.
-const BOTTOM_OVERFLOW := 24.0
+## Design px to screen px. Same zoom as the old 256 → 1280 head crop.
+const PIXELS_PER_DESIGN := 5.0
+## 256-wide column centered on the face (x = 384). Design y = 0 to 384,
+## so the crown is included and the cut is at the upper chest.
+const HEAD_ATLAS := Rect2(384, 0, 256, 384)
+## On-screen size of that crop: 256×5 by 384×5. The chest slice continues below it.
+const DISPLAY_SIZE := Vector2(1280, 1920)
+## Repeat the chest edge from the crop bottom down to the canvas bottom (y = 1024).
+const CHEST_EXTEND_PX := 3200
 
 static var _REGION_ACTIVE: Color = Color.from_hsv(50.0 / 360.0, 0.85, 0.95, 0.55)
 ## Soft edge as a fraction of the circle radius (0 = hard, ~0.25 = soft).
@@ -61,10 +63,6 @@ func configure(mask_path: String, radius_min: float, radius_max: float) -> void:
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = DISPLAY_SIZE
-	offset_left = -DISPLAY_SIZE.x / 2.0
-	offset_right = DISPLAY_SIZE.x / 2.0
-	offset_bottom = BOTTOM_OVERFLOW
-	offset_top = BOTTOM_OVERFLOW - DISPLAY_SIZE.y
 	_region_material = _make_region_material()
 	_setup_textures()
 	resized.connect(_layout_focus)
@@ -256,21 +254,21 @@ func _free_region(region_id: int) -> void:
 
 
 func _setup_textures() -> void:
-	var svg_scale := DISPLAY_SIZE.x / HEAD_SIZE
 	var sitting := FileAccess.get_file_as_string("res://assets/sitting.svg")
 	var mouth := FileAccess.get_file_as_string("res://assets/mouth.svg")
-	var head := SvgRaster.rasterize_crop(sitting, HEAD_ATLAS, svg_scale)
-	var mouth_img := SvgRaster.rasterize_crop(mouth, HEAD_ATLAS, svg_scale)
+	var head := SvgRaster.rasterize_crop(sitting, HEAD_ATLAS, PIXELS_PER_DESIGN)
+	var mouth_img := SvgRaster.rasterize_crop(mouth, HEAD_ATLAS, PIXELS_PER_DESIGN)
 	head.blend_rect(mouth_img, Rect2i(Vector2i.ZERO, mouth_img.get_size()), Vector2i.ZERO)
 	var dim := _load_dim_mask()
 	_clip_dim_to_head(dim, head)
 	_configure_texture_rect(_head, ImageTexture.create_from_image(head))
 	_configure_texture_rect(_dim, ImageTexture.create_from_image(dim))
+	_show_chest_extension(head, dim)
 	_build_hole()
 
 
 func _load_dim_mask() -> Image:
-	## Dim mask is 1024² (same space as sitting.svg); crop + scale like the head SVG.
+	## Dim mask is 1024² (same space as sitting.svg); crop + scale like the figure.
 	var full := _load_mask_image(_dim_mask_path)
 	if full == null:
 		return Image.create(int(DISPLAY_SIZE.x), int(DISPLAY_SIZE.y), false, Image.FORMAT_RGBA8)
@@ -283,6 +281,41 @@ func _load_dim_mask() -> Image:
 	var dim := full.get_region(crop)
 	dim.resize(int(DISPLAY_SIZE.x), int(DISPLAY_SIZE.y), Image.INTERPOLATE_TRILINEAR)
 	return dim
+
+
+## Continue the cut edge downward so the chest reads as a solid body, not a slice.
+func _show_chest_extension(head: Image, dim: Image) -> void:
+	_place_chest_strip("ChestBody", _extrude_bottom(head, CHEST_EXTEND_PX))
+	_place_chest_strip("ChestDim", _extrude_bottom(dim, CHEST_EXTEND_PX))
+
+
+func _place_chest_strip(node_name: String, img: Image) -> void:
+	var rect := get_node_or_null(node_name) as TextureRect
+	if rect == null:
+		rect = TextureRect.new()
+		rect.name = node_name
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		rect.stretch_mode = TextureRect.STRETCH_SCALE
+		add_child(rect)
+	rect.position = Vector2(0, DISPLAY_SIZE.y)
+	rect.size = Vector2(DISPLAY_SIZE.x, CHEST_EXTEND_PX)
+	rect.texture = ImageTexture.create_from_image(img)
+
+
+static func _extrude_bottom(img: Image, extra: int) -> Image:
+	var src := img
+	if src.get_format() != Image.FORMAT_RGBA8:
+		src = img.duplicate()
+		src.convert(Image.FORMAT_RGBA8)
+	var w := src.get_width()
+	var row := src.get_region(Rect2i(0, src.get_height() - 1, w, 1))
+	var out := Image.create(w, extra, false, Image.FORMAT_RGBA8)
+	var row_rect := Rect2i(0, 0, w, 1)
+	for y in extra:
+		out.blit_rect(row, row_rect, Vector2i(0, y))
+	return out
 
 
 func _load_mask_image(path: String) -> Image:
@@ -384,7 +417,7 @@ func _configure_texture_rect(rect: TextureRect, texture: Texture) -> void:
 	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 
-## Keep dim only where the head has coverage (avoids a dark square around the silhouette).
+## Keep dim only where the figure has coverage (avoids a dark rectangle around the silhouette).
 static func _clip_dim_to_head(dim: Image, head: Image) -> void:
 	if dim.get_size() != head.get_size():
 		return
@@ -421,7 +454,7 @@ func _layout_focus() -> void:
 
 ## Map a point in sitting.svg design space into this control (HEAD_ATLAS crop).
 func _design_to_view(design: Vector2) -> Vector2:
-	var view_scale := size / Vector2(HEAD_SIZE, HEAD_SIZE)
+	var view_scale := size / HEAD_ATLAS.size
 	return (design - HEAD_ATLAS.position) * view_scale
 
 
@@ -429,7 +462,7 @@ func _layout_region(region_id: int) -> void:
 	if not _regions.has(region_id):
 		return
 	var data: Dictionary = _regions[region_id]
-	var view_scale := size.x / HEAD_SIZE
+	var view_scale := size.x / HEAD_ATLAS.size.x
 	## Snap to whole pixels so circle + mark share a stable pixel phase.
 	## (Fractional positions make live fonts hinter-shift; texture marks stay put too.)
 	var center := _design_to_view(data.center).round()

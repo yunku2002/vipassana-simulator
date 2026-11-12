@@ -39,6 +39,7 @@ layout_mode = 2
 mouse_filter = 2
 
 [node name="CornerButtons" type="VBoxContainer" parent="Margin/Body" unique_id=1092342998]
+z_index = 1
 layout_mode = 1
 offset_right = 140.0
 offset_bottom = 144.0
@@ -157,14 +158,17 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=744248170]
-custom_minimum_size = Vector2(160, 44)
+[node name="ButtonsRow" type="HBoxContainer" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=1703972002]
 layout_mode = 2
 size_flags_horizontal = 4
+theme_override_constants/separation = 12
+
+[node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=744248170]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
 text = "Continue"
 
-[node name="BtnMenu" type="Button" parent="WinLayer/Center/Panel/Margin/VBox" unique_id=2072382797]
+[node name="BtnMenu" type="Button" parent="WinLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=2072382797]
 custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
-size_flags_horizontal = 4
 text = "Main Menu"

@@ -2,8 +2,8 @@
 
 [ext_resource type="PackedScene" uid="uid://stageshell01" path="res://scenes/stage_shell.tscn" id="1_shell"]
 [ext_resource type="Script" uid="uid://byk4xrwgllp3o" path="res://scripts/scene/anapana_3.gd" id="2_script"]
-[ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="3_figure"]
-[ext_resource type="PackedScene" uid="uid://dapxqapywcwht" path="res://scenes/head_focus.tscn" id="4_focus"]
+[ext_resource type="PackedScene" uid="uid://dapxqapywcwht" path="res://scenes/head_focus.tscn" id="3_focus"]
+[ext_resource type="PackedScene" uid="uid://3cfrf6evq8k3" path="res://scenes/breathing_figure.tscn" id="4_figure"]
 [ext_resource type="PackedScene" uid="uid://cgaugebox01" path="res://scenes/gauge_box.tscn" id="5_gauge"]
 
 [node name="Anapana3" unique_id=375004381 instance=ExtResource("1_shell")]
@@ -24,7 +24,21 @@ thought_hold_to_clear_sec = 0.5
 stage_scene_path = "res://scenes/anapana_3.tscn"
 intro_prefix = "STAGE_ANAPANA_3"
 
-[node name="CornerFigure" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="1" unique_id=1966009414 instance=ExtResource("3_figure")]
+[node name="HeadFocus" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="1" unique_id=1700999544 instance=ExtResource("3_focus")]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -640.0
+offset_top = -1365.0
+offset_right = 640.0
+offset_bottom = 555.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CornerFigure" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1966009414 instance=ExtResource("4_figure")]
 custom_minimum_size = Vector2(307.2, 307.2)
 layout_mode = 1
 anchors_preset = 2
@@ -36,16 +50,6 @@ offset_right = 299.2
 offset_bottom = -16.0
 grow_vertical = 0
 rig_display_scale = 0.3
-
-[node name="HeadFocus" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="2" unique_id=1700999544 instance=ExtResource("4_focus")]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 0
 
 [node name="GaugeBox" parent="Margin/Body" parent_id_path=PackedInt32Array(1296697649) index="3" unique_id=986152068 instance=ExtResource("5_gauge")]
 layout_mode = 1

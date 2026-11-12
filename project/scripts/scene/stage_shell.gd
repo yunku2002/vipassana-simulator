@@ -20,8 +20,8 @@ signal intro_finished
 @onready var _win_layer: CanvasLayer = $WinLayer
 @onready var _win_title: Label = $WinLayer/Center/Panel/Margin/VBox/WinTitle
 @onready var _goodbye: VBoxContainer = $WinLayer/Center/Panel/Margin/VBox/Goodbye
-@onready var _btn_continue: Button = $WinLayer/Center/Panel/Margin/VBox/BtnContinue
-@onready var _btn_menu: Button = $WinLayer/Center/Panel/Margin/VBox/BtnMenu
+@onready var _btn_continue: Button = $WinLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnContinue
+@onready var _btn_menu: Button = $WinLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnMenu
 
 var intro_blocking: bool = true
 var cleared: bool = false

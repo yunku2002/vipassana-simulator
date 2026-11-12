@@ -3,8 +3,10 @@ extends CanvasLayer
 class_name OptionOverlay
 
 const SCENE := preload("res://scenes/options_menu.tscn")
-const ICON_SOUND_ON := "🔊"
-const ICON_SOUND_OFF := "🔇"
+const _SPEAKER_INK := Color(0.169, 0.141, 0.094, 1)
+
+static var _speaker_on: ImageTexture
+static var _speaker_off: ImageTexture
 
 @onready var _title: Label = $Center/Panel/Margin/VBox/Title
 @onready var _lang_label: Label = $Center/Panel/Margin/VBox/LangRow/LangLabel
@@ -128,7 +130,74 @@ func _refresh_texts() -> void:
 
 
 func _update_mute_icon(button: Button) -> void:
-	button.text = ICON_SOUND_OFF if button.button_pressed else ICON_SOUND_ON
+	if _speaker_on == null:
+		_speaker_on = _make_speaker_icon(false)
+		_speaker_off = _make_speaker_icon(true)
+	button.text = ""
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	button.icon = _speaker_off if button.button_pressed else _speaker_on
+
+
+static func _make_speaker_icon(muted: bool) -> ImageTexture:
+	const LOGIC := 26
+	const SS := 4
+	const N := LOGIC * SS
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	for y in N:
+		for x in N:
+			var p := Vector2(x + 0.5, y + 0.5) / float(SS)
+			var alpha := 1.0 - smoothstep(-0.15, 0.55, _speaker_sdf(p, muted))
+			if alpha < 0.004:
+				continue
+			img.set_pixel(x, y, Color(_SPEAKER_INK.r, _SPEAKER_INK.g, _SPEAKER_INK.b, alpha))
+	img.resize(LOGIC, LOGIC, Image.INTERPOLATE_LANCZOS)
+	return ImageTexture.create_from_image(img)
+
+
+static func _speaker_sdf(p: Vector2, muted: bool) -> float:
+	var body := PackedVector2Array([
+		Vector2(1.4, 9.4), Vector2(7.2, 9.4), Vector2(14.2, 4.6),
+		Vector2(14.2, 21.4), Vector2(7.2, 16.6), Vector2(1.4, 16.6),
+	])
+	var d := _fill_poly(p, body)
+	if muted:
+		d = minf(d, _segment_sdf(p, Vector2(17.2, 9.5), Vector2(24.2, 16.5), 1.5))
+		d = minf(d, _segment_sdf(p, Vector2(17.2, 16.5), Vector2(24.2, 9.5), 1.5))
+	else:
+		var center := Vector2(14.2, 13.0)
+		d = minf(d, _arc_sdf(p, center, 3.6, 1.35, 0.9))
+		d = minf(d, _arc_sdf(p, center, 6.7, 1.35, 0.9))
+		d = minf(d, _arc_sdf(p, center, 10.0, 1.35, 0.9))
+	return d
+
+
+static func _fill_poly(p: Vector2, pts: PackedVector2Array) -> float:
+	var inside := false
+	var min_d := INF
+	var count := pts.size()
+	for i in count:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[(i + 1) % count]
+		var ab := b - a
+		var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+		min_d = minf(min_d, p.distance_to(a + ab * t))
+		if (a.y > p.y) != (b.y > p.y) and p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x:
+			inside = not inside
+	return -min_d if inside else min_d
+
+
+static func _segment_sdf(p: Vector2, a: Vector2, b: Vector2, thickness: float) -> float:
+	var ab := b - a
+	var t := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	return p.distance_to(a + ab * t) - thickness * 0.5
+
+
+static func _arc_sdf(p: Vector2, center: Vector2, radius: float, thickness: float, half_angle: float) -> float:
+	var d := p - center
+	var ang := clampf(atan2(d.y, d.x), -half_angle, half_angle)
+	var nearest := center + Vector2(cos(ang), sin(ang)) * radius
+	return p.distance_to(nearest) - thickness * 0.5
 
 
 func _update_lang_buttons() -> void:

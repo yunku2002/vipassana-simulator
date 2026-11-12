@@ -14,12 +14,14 @@ var _thought_timer: float = 0.0
 var _thought_bubble: ThoughtBubble
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
+var _thought_layout_queued: bool = false
 
 
 func _ready() -> void:
 	_corner.get_rig().show_chevrons = false
 	if thoughts_enabled:
 		_thought_timer = randf_range(thought_interval_min, thought_interval_max)
+	_thought_layer.resized.connect(_on_thought_layer_resized)
 	super._ready()
 
 
@@ -78,15 +80,14 @@ func _spawn_thought() -> void:
 	var bubble := ThoughtBubble.new()
 	_thought_layer.add_child(bubble)
 	var cloud_top_left := _pick_thought_local_position()
-	var anchor_layer := (
-		_thought_layer.get_global_transform_with_canvas().affine_inverse()
-		* _corner.get_head_global_position()
-	)
+	var anchor_layer := ThoughtBubble.to_layer(_thought_layer, _corner.get_head_global_position())
+	var zone_center := ThoughtBubble.to_layer(_thought_layer, _thought_spawn_zone().get_center())
 	bubble.configure(
 		subject_index,
 		text,
 		cloud_top_left,
 		anchor_layer,
+		zone_center,
 		_thought_scale()
 	)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))
@@ -138,6 +139,27 @@ func _update_thought_visuals() -> void:
 	var interactive := _thought_bubble.is_cloud_revealed()
 	_thought_bubble.mouse_filter = (
 		Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	)
+
+
+func _on_thought_layer_resized() -> void:
+	if _thought_layout_queued:
+		return
+	_thought_layout_queued = true
+	_relayout_thoughts.call_deferred()
+
+
+func _relayout_thoughts() -> void:
+	_thought_layout_queued = false
+	if _thought_bubble == null or not is_instance_valid(_thought_bubble):
+		return
+	var zone := _thought_spawn_zone()
+	if zone.size.x < 1.0 or zone.size.y < 1.0:
+		return
+	_thought_bubble.follow_zone(
+		ThoughtBubble.to_layer(_thought_layer, zone.get_center()),
+		ThoughtBubble.to_layer(_thought_layer, _corner.get_head_global_position()),
+		_thought_layer.size
 	)
 
 

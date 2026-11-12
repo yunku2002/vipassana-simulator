@@ -181,8 +181,12 @@ func _on_thoughts_changed() -> void:
 	_apply_locks()
 
 
+func _thought_spawn_zone() -> Rect2:
+	return _scan.get_focus_global_rect()
+
+
 func _pick_thought_local_position() -> Vector2:
-	var focus := _scan.get_focus_global_rect()
+	var focus := _thought_spawn_zone()
 	var thought_scale := _thought_scale()
 	var offset := Vector2.from_angle(randf() * TAU) * (focus.size.x * 0.5 * 0.2) * sqrt(randf())
 	var top_left_global := focus.get_center() + offset - ThoughtBubble.CLOUD_SIZE * thought_scale * 0.5

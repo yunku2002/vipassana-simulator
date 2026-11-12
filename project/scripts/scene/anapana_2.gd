@@ -21,12 +21,14 @@ var _thoughts_erased: int = 0
 var _thought_bubbles: Array[ThoughtBubble] = []
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
+var _thought_layout_queued: bool = false
 
 
 func _ready() -> void:
 	_gauge_value = 100.0
 	_gauge_bar.value = 100.0
 	_thought_timer = _next_thought_interval()
+	_thought_layer.resized.connect(_on_thought_layer_resized)
 	super._ready()
 
 
@@ -101,8 +103,9 @@ func _spawn_thought() -> void:
 	_thought_layer.add_child(bubble)
 
 	var cloud_top_left := _pick_thought_local_position()
-	var anchor_layer := _thought_layer.get_global_transform_with_canvas().affine_inverse() * _breathing.get_head_global_position()
-	bubble.configure(subject_index, text, cloud_top_left, anchor_layer)
+	var anchor_layer := ThoughtBubble.to_layer(_thought_layer, _breathing.get_head_global_position())
+	var zone_center := ThoughtBubble.to_layer(_thought_layer, _thought_spawn_zone().get_center())
+	bubble.configure(subject_index, text, cloud_top_left, anchor_layer, zone_center)
 	bubble.gui_input.connect(_on_thought_input.bind(bubble))
 	bubble.reveal_finished.connect(_on_thought_revealed)
 
@@ -162,8 +165,31 @@ func _clear_thought_hold() -> void:
 	_holding_elapsed = 0.0
 
 
+func _thought_spawn_zone() -> Rect2:
+	return _btn_in.get_global_rect().merge(_btn_out.get_global_rect())
+
+
+func _on_thought_layer_resized() -> void:
+	if _thought_layout_queued:
+		return
+	_thought_layout_queued = true
+	_relayout_thoughts.call_deferred()
+
+
+func _relayout_thoughts() -> void:
+	_thought_layout_queued = false
+	var zone := _thought_spawn_zone()
+	if zone.size.x < 1.0 or zone.size.y < 1.0:
+		return
+	var zone_center := ThoughtBubble.to_layer(_thought_layer, zone.get_center())
+	var anchor := ThoughtBubble.to_layer(_thought_layer, _breathing.get_head_global_position())
+	for bubble in _thought_bubbles:
+		if is_instance_valid(bubble):
+			bubble.follow_zone(zone_center, anchor, _thought_layer.size)
+
+
 func _pick_thought_local_position() -> Vector2:
-	var zone := _btn_in.get_global_rect().merge(_btn_out.get_global_rect())
+	var zone := _thought_spawn_zone()
 	var best_pos := Vector2.ZERO
 	var best_sep := -1.0
 	for attempt in _THOUGHT_PLACEMENT_ATTEMPTS:
