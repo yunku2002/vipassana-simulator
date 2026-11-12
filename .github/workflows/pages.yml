@@ -1,0 +1,114 @@
+name: Deploy to GitHub Pages
+
+# Exports the Web preset and publishes it with GitHub Pages.
+# Thread support stays off in that preset: Pages cannot send the
+# cross-origin isolation headers a threaded Web build requires.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.6.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libfontconfig1 \
+            libgl1 \
+            libx11-6 \
+            libxcursor1 \
+            libxext6 \
+            libxi6 \
+            libxinerama1 \
+            libxkbcommon0 \
+            libxrandr2 \
+            libxrender1 \
+            unzip
+          if apt-cache show libasound2t64 >/dev/null 2>&1; then
+            sudo apt-get install -y --no-install-recommends libasound2t64
+          else
+            sudo apt-get install -y --no-install-recommends libasound2
+          fi
+
+      - name: Install Godot
+        run: |
+          set -euo pipefail
+          version="${GODOT_VERSION}"
+          base="https://github.com/godotengine/godot/releases/download/${version}-stable"
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 2 \
+            --output "${RUNNER_TEMP}/godot.zip" \
+            "${base}/Godot_v${version}-stable_linux.x86_64.zip"
+          curl --fail --location --retry 5 --retry-all-errors --retry-delay 2 \
+            --output "${RUNNER_TEMP}/templates.tpz" \
+            "${base}/Godot_v${version}-stable_export_templates.tpz"
+
+          unzip -q "${RUNNER_TEMP}/godot.zip" -d "${RUNNER_TEMP}/godot"
+          sudo install -m 0755 \
+            "${RUNNER_TEMP}/godot/Godot_v${version}-stable_linux.x86_64" \
+            /usr/local/bin/godot
+
+          template_dir="${HOME}/.local/share/godot/export_templates/${version}.stable"
+          mkdir -p "${template_dir}"
+          unzip -q -j "${RUNNER_TEMP}/templates.tpz" \
+            "templates/version.txt" \
+            "templates/web_nothreads_debug.zip" \
+            "templates/web_nothreads_release.zip" \
+            -d "${template_dir}"
+          test -s "${template_dir}/version.txt"
+          test -s "${template_dir}/web_nothreads_release.zip"
+          rm -f "${RUNNER_TEMP}/godot.zip" "${RUNNER_TEMP}/templates.tpz"
+          godot --version
+
+      - name: Export Web
+        run: |
+          set -euo pipefail
+          godot --headless --path project --import
+          mkdir -p export/web
+          out="${GITHUB_WORKSPACE}/export/web/index.html"
+          godot --headless --path project --export-release "Web" "${out}"
+          # A first headless run can finish importing and exit without writing the build.
+          if [[ ! -s "${out}" ]]; then
+            godot --headless --path project --export-release "Web" "${out}"
+          fi
+          test -s export/web/index.html
+          test -s export/web/index.wasm
+          test -s export/web/index.pck
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: export/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
