@@ -37,7 +37,7 @@ shader_type canvas_item;
 render_mode unshaded, blend_mix;
 uniform float feather : hint_range(0.0, 1.0) = 0.28;
 uniform vec4 reject : source_color = vec4(0.96, 0.1, 0.08, 0.75);
-instance uniform float outline_amount : hint_range(0.0, 1.0) = 0.0;
+uniform float outline_amount : hint_range(0.0, 1.0) = 0.0;
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float d = length(p);
@@ -824,7 +824,7 @@ func _make_sensation_holder(center: Vector2, diameter: float) -> Control:
 	holder.position = _snap_top_left(center, diameter)
 	var circle := ColorRect.new()
 	circle.color = HeadFocus._REGION_ACTIVE
-	circle.material = _circle_material
+	circle.material = _circle_material.duplicate()
 	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	circle.size = holder.size
 	holder.add_child(circle)
@@ -894,7 +894,7 @@ func _add_blue_copy(coverage: Control, holder: Control) -> void:
 		return
 	var copy := ColorRect.new()
 	copy.color = _BLUE
-	copy.material = _circle_material
+	copy.material = _circle_material.duplicate()
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.position = holder.position
 	copy.size = holder.size
@@ -1266,8 +1266,11 @@ func _flash_outline(sensation: _Sensation) -> void:
 
 
 func _set_outline_amount(circle: ColorRect, amount: float) -> void:
-	if is_instance_valid(circle):
-		circle.set_instance_shader_parameter(&"outline_amount", amount)
+	if not is_instance_valid(circle):
+		return
+	var circle_material := circle.material
+	if circle_material != null:
+		circle_material.set_shader_parameter(&"outline_amount", amount)
 
 
 func _kill_reject(sensation: _Sensation) -> void:

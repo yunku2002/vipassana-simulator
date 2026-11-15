@@ -180,7 +180,7 @@ func _on_continue_pressed() -> void:
 	var next_index := stage_index() + 1
 	if next_index < StageRegistry.stage_count():
 		GameSettings.set_next_stage(next_index)
-		get_tree().change_scene_to_file(StageRegistry.scene_path(next_index))
+		get_tree().call_deferred("change_scene_to_file", StageRegistry.scene_path(next_index))
 		return
 	_go_to_main_menu()
 
@@ -201,7 +201,7 @@ func _hide_exit_confirm() -> void:
 
 func _go_to_main_menu() -> void:
 	get_tree().paused = false
-	get_tree().change_scene_to_file(MAIN_MENU_PATH)
+	get_tree().call_deferred("change_scene_to_file", MAIN_MENU_PATH)
 
 
 func _on_instructions_pressed() -> void:

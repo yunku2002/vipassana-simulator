@@ -43,8 +43,8 @@ func _refresh_list_labels() -> void:
 
 func _on_pick_stage(stage_index: int) -> void:
 	GameSettings.set_next_stage(stage_index)
-	get_tree().change_scene_to_file(StageRegistry.scene_path(stage_index))
+	get_tree().call_deferred("change_scene_to_file", StageRegistry.scene_path(stage_index))
 
 
 func _on_back_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/main_menu.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/main_menu.tscn")

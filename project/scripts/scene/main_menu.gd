@@ -27,11 +27,11 @@ func _refresh_texts() -> void:
 func _on_start_pressed() -> void:
 	var stage_index := GameSettings.next_stage_index if GameSettings.can_continue_from_title() else 0
 	GameSettings.set_next_stage(stage_index)
-	get_tree().change_scene_to_file(StageRegistry.scene_path(stage_index))
+	get_tree().call_deferred("change_scene_to_file", StageRegistry.scene_path(stage_index))
 
 
 func _on_stages_pressed() -> void:
-	get_tree().change_scene_to_file("res://scenes/stage_select.tscn")
+	get_tree().call_deferred("change_scene_to_file", "res://scenes/stage_select.tscn")
 
 
 func _on_options_pressed() -> void:
