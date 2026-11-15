@@ -3,7 +3,7 @@ extends Node
 ## Design size. A 16:9 window lays out at this size.
 const DESIGN_SIZE := Vector2i(1280, 720)
 ## Narrower than this, the canvas stays this wide and the UI scales down.
-const MIN_WIDTH := 880
+const MIN_WIDTH := 480
 
 
 func _enter_tree() -> void:

@@ -165,7 +165,6 @@ func _build_visuals() -> void:
 	_layer = _SparkLayer.new()
 	_layer.stage = self
 	_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_layer.z_index = 20
 	add_child(_layer)
 	_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	move_child(_layer, $Margin.get_index() + 1)

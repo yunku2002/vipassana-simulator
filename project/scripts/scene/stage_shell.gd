@@ -18,13 +18,19 @@ signal intro_finished
 @onready var _btn_confirm_cancel: Button = $ExitConfirmLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnCancel
 @onready var _btn_confirm_ok: Button = $ExitConfirmLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnConfirm
 @onready var _win_layer: CanvasLayer = $WinLayer
+@onready var _win_panel: PanelContainer = $WinLayer/Center/Panel
+@onready var _win_margin: MarginContainer = $WinLayer/Center/Panel/Margin
 @onready var _win_title: Label = $WinLayer/Center/Panel/Margin/VBox/WinTitle
 @onready var _goodbye: VBoxContainer = $WinLayer/Center/Panel/Margin/VBox/Goodbye
 @onready var _btn_continue: Button = $WinLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnContinue
 @onready var _btn_menu: Button = $WinLayer/Center/Panel/Margin/VBox/ButtonsRow/BtnMenu
 
+const GOODBYE_PANEL_MAX_WIDTH := 480.0
+const PANEL_SIDE_GUTTER := 32.0
+
 var intro_blocking: bool = true
 var cleared: bool = false
+var _goodbye_layout_queued: bool = false
 
 
 func _ready() -> void:
@@ -39,12 +45,50 @@ func _ready() -> void:
 	_btn_confirm_ok.pressed.connect(_go_to_main_menu)
 	_btn_continue.pressed.connect(_on_continue_pressed)
 	_btn_menu.pressed.connect(_go_to_main_menu)
+	get_viewport().size_changed.connect(_layout_panel)
+	_goodbye.resized.connect(_queue_goodbye_text_layout)
+	_layout_panel()
 	_refresh_shell_texts()
 	if not intro_prefix.is_empty():
 		var intro := StageIntroOverlay.open(self, intro_prefix)
 		intro.finished.connect(_on_intro_finished)
 	else:
 		_on_intro_finished()
+
+
+func _layout_panel() -> void:
+	var panel_inset := float(
+		_win_margin.get_theme_constant("margin_left")
+		+ _win_margin.get_theme_constant("margin_right")
+	)
+	var panel_style := _win_panel.get_theme_stylebox("panel")
+	if panel_style != null:
+		panel_inset += panel_style.get_minimum_size().x
+	var available_width := maxf(get_viewport().get_visible_rect().size.x - PANEL_SIDE_GUTTER, 0.0)
+	var panel_width := minf(GOODBYE_PANEL_MAX_WIDTH, available_width)
+	var content_width := maxf(panel_width - panel_inset, 0.0)
+	_goodbye.custom_minimum_size.x = content_width
+	_queue_goodbye_text_layout()
+
+
+func _queue_goodbye_text_layout() -> void:
+	if _goodbye_layout_queued:
+		return
+	_goodbye_layout_queued = true
+	_layout_goodbye_text.call_deferred()
+
+
+func _layout_goodbye_text() -> void:
+	_goodbye_layout_queued = false
+	if _goodbye.size.x <= 0.0:
+		return
+	for child in _goodbye.get_children():
+		var label := child as RichTextLabel
+		if label == null:
+			continue
+		var content_height := float(label.get_content_height())
+		if not is_equal_approx(label.custom_minimum_size.y, content_height):
+			label.custom_minimum_size.y = content_height
 
 
 func _notification(what: int) -> void:
@@ -83,10 +127,11 @@ func _fill_goodbye(text: String) -> void:
 	for paragraph in StageIntroOverlay._split_paragraphs(text):
 		var label := RichTextLabel.new()
 		label.bbcode_enabled = true
-		label.fit_content = true
+		label.fit_content = false
 		label.scroll_active = false
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.resized.connect(_queue_goodbye_text_layout)
 		label.add_theme_color_override("default_color", _BODY_COLOR)
 		label.add_theme_font_size_override("normal_font_size", 16)
 		label.text = paragraph

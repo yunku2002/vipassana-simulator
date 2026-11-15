@@ -23,7 +23,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Center" unique_id=691578083]
-custom_minimum_size = Vector2(520, 0)
+custom_minimum_size = Vector2(450, 0)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Center/Panel" unique_id=1173569528]
@@ -67,7 +67,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="MusicLabel" type="Label" parent="Center/Panel/Margin/VBox/MusicRow" unique_id=930881335]
-custom_minimum_size = Vector2(150, 0)
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Music"
 
@@ -87,7 +87,7 @@ layout_mode = 2
 theme_override_constants/separation = 12
 
 [node name="SfxLabel" type="Label" parent="Center/Panel/Margin/VBox/SfxRow" unique_id=1842201002]
-custom_minimum_size = Vector2(150, 0)
+custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Sound Effects"
 

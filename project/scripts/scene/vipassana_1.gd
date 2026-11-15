@@ -30,7 +30,7 @@ const _GOAL_LINE := Color(0.169, 0.141, 0.094, 1.0)
 ## Set in _enter_tree rather than @onready: the scan must be configured before its own _ready.
 var _scan: BodyScan
 @onready var _gauge_bar: ProgressBar = $Margin/Body/GaugeBox/Gauge
-@onready var _gauge_label: Label = $Margin/Body/GaugeBox/GaugeLabel
+@onready var _gauge_label: Label = $Margin/Body/GaugeBox/GaugeLabelSlot/GaugeLabel
 @onready var _once_more: Label = $Margin/Body/OnceMore
 
 var _phase: _Phase = _Phase.SCAN
@@ -38,6 +38,10 @@ var _phase: _Phase = _Phase.SCAN
 var _pass: int = 0
 var _once_elapsed: float = 0.0
 var _goal_line: ColorRect
+
+
+func _responsive_figure_control() -> Control:
+	return _scan
 
 
 func _enter_tree() -> void:

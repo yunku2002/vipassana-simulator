@@ -5,18 +5,33 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -88.0
+offset_left = -48.0
+offset_top = -16.0
+offset_right = -4.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="GaugeLabel" type="Label" parent="." unique_id=651684510]
+[node name="GaugeLabelSlot" type="Control" parent="." unique_id=651684510]
+custom_minimum_size = Vector2(44, 40)
 layout_mode = 2
+mouse_filter = 2
+
+[node name="GaugeLabel" type="Label" parent="GaugeLabelSlot" unique_id=1474850143]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 8.0
+offset_bottom = 8.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_colors/font_outline_color = Color(1, 0.98, 0.9, 1)
 theme_override_constants/outline_size = 8
 text = "Awareness"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Gauge" type="ProgressBar" parent="." unique_id=1501958591]
 custom_minimum_size = Vector2(44, 420)

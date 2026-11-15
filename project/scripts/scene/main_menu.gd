@@ -1,10 +1,10 @@
 extends Control
 
-@onready var _title: Label = $Margin/Center/VBox/Header/Title
-@onready var _credit: Label = $Margin/Center/VBox/Header/Credit
-@onready var _btn_start: Button = $Margin/Center/VBox/BtnStart
-@onready var _btn_stages: Button = $Margin/Center/VBox/BtnStages
-@onready var _btn_options: Button = $Margin/Center/VBox/BtnOptions
+@onready var _title: Label = $Center/VBox/Header/Title
+@onready var _credit: Label = $Center/VBox/Header/Credit
+@onready var _btn_start: Button = $Center/VBox/BtnStart
+@onready var _btn_stages: Button = $Center/VBox/BtnStages
+@onready var _btn_options: Button = $Center/VBox/BtnOptions
 
 
 func _ready() -> void:

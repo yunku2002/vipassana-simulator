@@ -12,11 +12,17 @@ const SCENE := preload("res://scenes/stage_intro_overlay.tscn")
 @onready var _btn_learn_more: Button = $Center/Panel/Margin/VBox/ActionsRow/BtnLearnMore
 @onready var _btn_continue: Button = $Center/Panel/Margin/VBox/ActionsRow/BtnContinue
 @onready var _intro_root: Control = $Center
+@onready var _intro_panel: PanelContainer = $Center/Panel
 @onready var _background_root: CenterContainer = $BackgroundView
+@onready var _background_panel: PanelContainer = $BackgroundView/Panel
 @onready var _background_title: Label = $BackgroundView/Panel/Margin/VBox/BackgroundTitle
 @onready var _background_block: VBoxContainer = $BackgroundView/Panel/Margin/VBox/BackgroundBlock
 @onready var _btn_background_back: Button = $BackgroundView/Panel/Margin/VBox/BtnBackgroundBack
 @onready var _body_label_template: Label = $BodyLabelTemplate
+
+const INTRO_PANEL_MAX_WIDTH := 560.0
+const BACKGROUND_PANEL_MAX_WIDTH := 640.0
+const PANEL_SIDE_GUTTER := 32.0
 
 var _stage_prefix: String = ""
 var _paused_by_self: bool = false
@@ -38,8 +44,16 @@ func _ready() -> void:
 	_btn_continue.pressed.connect(_on_continue_pressed)
 	_btn_background_back.pressed.connect(_hide_background)
 	_background_root.hide()
+	get_viewport().size_changed.connect(_layout_panels)
+	_layout_panels()
 	_apply_content()
 	_refresh_texts()
+
+
+func _layout_panels() -> void:
+	var available_width := maxf(get_viewport().get_visible_rect().size.x - PANEL_SIDE_GUTTER, 0.0)
+	_intro_panel.custom_minimum_size.x = minf(INTRO_PANEL_MAX_WIDTH, available_width)
+	_background_panel.custom_minimum_size.x = minf(BACKGROUND_PANEL_MAX_WIDTH, available_width)
 
 
 func _notification(what: int) -> void:

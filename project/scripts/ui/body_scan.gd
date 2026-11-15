@@ -145,6 +145,7 @@ var _drag_grab: Vector2 = Vector2.ZERO
 var _drag_body_start: Vector2 = Vector2.ZERO
 var _drag_last: Vector2 = Vector2.ZERO
 var _drag_side_left: bool = true
+var _active_touch_index: int = -1
 
 var _circle_material: ShaderMaterial
 var _dim_material: ShaderMaterial
@@ -188,6 +189,20 @@ func configure(
 func set_symmetric(enabled: bool, overlap_margin: float = 40.0) -> void:
 	_symmetric = enabled
 	_overlap_margin = maxf(overlap_margin, 0.0)
+
+
+func set_responsive_scale(scale_factor: float) -> void:
+	var factor := clampf(scale_factor, 0.01, 1.0)
+	var keep_pose := _symmetric and _mask_ready and _body != null
+	var body_pos := _body_scan_pos(_body) if keep_pose else Vector2.ZERO
+	var body_b_pos := _body_scan_pos(_body_b) if keep_pose and _body_b != null else Vector2.ZERO
+	pivot_offset = size * 0.5
+	scale = Vector2.ONE * factor
+	# Symmetric panes recalculate their clips to cover the unscaled viewport.
+	clip_contents = factor >= 1.0
+	_layout_panes()
+	if keep_pose:
+		_set_body_positions(body_pos, body_b_pos)
 
 
 ## separation is the minimum distance between centers, in design pixels.
@@ -393,13 +408,25 @@ func get_focus_global_rect() -> Rect2:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if not event is InputEventMouseButton:
+	var local_position: Vector2
+	var touch_index := -1
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+			return
+		local_position = get_local_mouse_position()
+	elif event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if not touch.pressed:
+			return
+		local_position = get_global_transform_with_canvas().affine_inverse() * touch.position
+		touch_index = touch.index
+	else:
 		return
-	var mb := event as InputEventMouseButton
-	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed:
+	if _dragging:
 		return
 	if _equanimity and _press_enabled:
-		var hit := _sensation_at_local(get_local_mouse_position())
+		var hit := _sensation_at_local(local_position)
 		if hit != null:
 			accept_event()
 			if _is_default_hold(hit.cluster_index):
@@ -410,7 +437,8 @@ func _gui_input(event: InputEvent) -> void:
 	if not _drag_enabled:
 		return
 	_dragging = true
-	_drag_grab = get_local_mouse_position()
+	_active_touch_index = touch_index
+	_drag_grab = local_position
 	_drag_last = _drag_grab
 	_drag_body_start = _body_scan_pos(_body)
 	_drag_side_left = not _symmetric or _drag_grab.x < size.x * 0.5
@@ -421,19 +449,38 @@ func _input(event: InputEvent) -> void:
 	if not _dragging:
 		return
 	if event is InputEventMouseButton:
+		if _active_touch_index >= 0:
+			return
 		var mb := event as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_LEFT and not mb.pressed:
 			_dragging = false
 		return
-	if not event is InputEventMouseMotion or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_dragging = false
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.index == _active_touch_index and (not touch.pressed or touch.canceled):
+			_dragging = false
+			_active_touch_index = -1
 		return
-	var mouse := get_local_mouse_position()
-	if _symmetric:
-		_drag_symmetric(mouse - _drag_last)
-		_drag_last = mouse
+	var local_position: Vector2
+	if event is InputEventMouseMotion:
+		if _active_touch_index >= 0:
+			return
+		if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_dragging = false
+			return
+		local_position = get_local_mouse_position()
+	elif event is InputEventScreenDrag:
+		var drag := event as InputEventScreenDrag
+		if drag.index != _active_touch_index:
+			return
+		local_position = get_global_transform_with_canvas().affine_inverse() * drag.position
 	else:
-		_set_body_position(_drag_body_start + mouse - _drag_grab)
+		return
+	if _symmetric:
+		_drag_symmetric(local_position - _drag_last)
+		_drag_last = local_position
+	else:
+		_set_body_position(_drag_body_start + local_position - _drag_grab)
 		_clamp_body()
 
 
@@ -503,11 +550,14 @@ func _make_body_tree(parent: Control, mirror: bool) -> Control:
 func _layout_panes() -> void:
 	if not _symmetric or _left_pane == null or _right_pane == null:
 		return
-	var half := size.x * 0.5
-	_left_pane.position = Vector2.ZERO
-	_left_pane.size = Vector2(half, size.y)
-	_right_pane.position = Vector2(half, 0.0)
-	_right_pane.size = Vector2(size.x - half, size.y)
+	var factor := maxf(scale.x, 0.01)
+	var center := size * 0.5
+	var pane_start := center - center / factor
+	var pane_size := size / factor
+	_left_pane.position = Vector2(pane_start.x, pane_start.y)
+	_left_pane.size = Vector2(center.x / factor, pane_size.y)
+	_right_pane.position = Vector2(center.x, pane_start.y)
+	_right_pane.size = Vector2((size.x - center.x) / factor, pane_size.y)
 
 
 func _build_figure() -> void:

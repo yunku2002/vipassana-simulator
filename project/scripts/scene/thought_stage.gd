@@ -1,6 +1,8 @@
 class_name ThoughtStage
 extends StageShell
 
+const FIGURE_REFERENCE_WIDTH := 800.0
+
 @export_group("Thoughts")
 @export var thoughts_enabled: bool = true
 @export var thought_interval_min: float
@@ -22,7 +24,43 @@ func _ready() -> void:
 	if thoughts_enabled:
 		_thought_timer = randf_range(thought_interval_min, thought_interval_max)
 	_thought_layer.resized.connect(_on_thought_layer_resized)
+	get_viewport().size_changed.connect(_queue_responsive_figure_layout)
 	super._ready()
+	_queue_responsive_figure_layout()
+
+
+func _responsive_figure_control() -> Control:
+	return null
+
+
+func _responsive_figure_pivot(figure: Control) -> Vector2:
+	return figure.size * 0.5
+
+
+func _queue_responsive_figure_layout() -> void:
+	_layout_responsive_figures.call_deferred()
+
+
+func _layout_responsive_figures() -> void:
+	var viewport_width := get_viewport().get_visible_rect().size.x
+	if viewport_width <= 0.0:
+		return
+	var scale_factor := clampf(
+		viewport_width / FIGURE_REFERENCE_WIDTH,
+		float(WindowScale.MIN_WIDTH) / FIGURE_REFERENCE_WIDTH,
+		1.0
+	)
+	if _corner.size != Vector2.ZERO:
+		# Keep the corner figure pinned to its bottom-left anchor as it shrinks.
+		_corner.pivot_offset = Vector2(0.0, _corner.size.y)
+		_corner.scale = Vector2.ONE * scale_factor
+	var figure := _responsive_figure_control()
+	if figure != null and figure.size != Vector2.ZERO:
+		figure.pivot_offset = _responsive_figure_pivot(figure)
+		if figure is BodyScan:
+			(figure as BodyScan).set_responsive_scale(scale_factor)
+		else:
+			figure.scale = Vector2.ONE * scale_factor
 
 
 func _refresh_gameplay_texts() -> void:
