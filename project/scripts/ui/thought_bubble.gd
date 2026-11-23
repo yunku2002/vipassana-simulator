@@ -60,6 +60,8 @@ var _label: Label
 var _cloud: ColorRect
 var _trail_dots: Array[ColorRect] = []
 var _trail_reveal_elapsed: float = 0.0
+var _display_scale: float = 1.0
+var _cloud_seed: int = -1
 ## Cloud center relative to the spawn-zone center, in layer pixels.
 var _zone_offset := Vector2.ZERO
 var _trail_anchor := Vector2.ZERO
@@ -76,7 +78,6 @@ func _init() -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(_label)
 
 
@@ -146,10 +147,11 @@ func configure(
 	_label.text = text
 	var display := CLOUD_SIZE * display_scale
 	position = cloud_top_left_layer
-	size = display
 	custom_minimum_size = display
+	size = display
+	_display_scale = display_scale
 	_zone_offset = position + size * 0.5 - zone_center_layer
-	_label.add_theme_font_size_override("font_size", int(round(16.0 * display_scale)))
+	_layout_label(display_scale)
 	_build_cloud(display)
 	_trail_reveal_elapsed = 0.0
 	_label.visible = false
@@ -160,6 +162,30 @@ func configure(
 
 func set_subject_text(text: String) -> void:
 	_label.text = text
+
+
+func _layout_label(display_scale: float) -> void:
+	_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_label.add_theme_font_size_override("font_size", int(round(16.0 * display_scale)))
+	_label.update_minimum_size()
+
+
+func set_display_scale(display_scale: float) -> void:
+	var new_scale := maxf(display_scale, 0.01)
+	if is_equal_approx(new_scale, _display_scale):
+		return
+	var old_scale := _display_scale
+	var zone_center := position + size * 0.5 - _zone_offset
+	custom_minimum_size = CLOUD_SIZE * new_scale
+	size = custom_minimum_size
+	_display_scale = new_scale
+	_zone_offset *= new_scale / old_scale
+	position = zone_center + _zone_offset - size * 0.5
+	_layout_label(new_scale)
+	_cloud.visible = false
+	_cloud.queue_free()
+	_build_cloud(size)
+	_rebuild_trail()
 
 
 ## Move the cloud with the spawn zone and aim the trail at the head's current position.
@@ -237,7 +263,10 @@ func _rebuild_trail() -> void:
 
 func _build_cloud(cloud_size: Vector2) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.randomize()
+	if _cloud_seed < 0:
+		rng.randomize()
+		_cloud_seed = rng.randi()
+	rng.seed = _cloud_seed
 	var rect := ColorRect.new()
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rect.size = cloud_size

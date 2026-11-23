@@ -44,6 +44,10 @@ func _responsive_figure_control() -> Control:
 	return _scan
 
 
+func _thought_scale() -> float:
+	return super._thought_scale() * _responsive_scale_factor
+
+
 func _enter_tree() -> void:
 	_scan = $Margin/Body/Scan
 	_scan.set_name_clusters(cluster_count, cluster_separation)
@@ -121,6 +125,11 @@ func _check_goal() -> void:
 		return
 	if _scan.coverage_ratio() * 100.0 < coverage_goal:
 		return
+	if _pass_count() == 1:
+		_phase = _Phase.DONE
+		_apply_locks()
+		mark_cleared()
+		return
 	if _pass == 0:
 		_begin_once_more()
 	else:
@@ -155,6 +164,10 @@ func _dismiss_before_reset() -> void:
 
 func _configure_next_pass() -> void:
 	_apply_fast_pace()
+
+
+func _pass_count() -> int:
+	return 2
 
 
 func _end_once_more() -> void:

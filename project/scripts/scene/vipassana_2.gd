@@ -15,6 +15,7 @@ func _enter_tree() -> void:
 	super._enter_tree()
 	_apply_fast_pace()
 	_scan.set_equanimity(true)
+	_scan.set_anicca_stride(3)
 	_scan.set_reject_outline_sec(reject_outline_sec)
 	_apply_color_holds()
 

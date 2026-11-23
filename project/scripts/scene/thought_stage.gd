@@ -17,6 +17,7 @@ var _thought_bubble: ThoughtBubble
 var _holding_panel: ThoughtBubble
 var _holding_elapsed: float = 0.0
 var _thought_layout_queued: bool = false
+var _responsive_scale_factor: float = 1.0
 
 
 func _ready() -> void:
@@ -50,6 +51,7 @@ func _layout_responsive_figures() -> void:
 		float(WindowScale.MIN_WIDTH) / FIGURE_REFERENCE_WIDTH,
 		1.0
 	)
+	_responsive_scale_factor = scale_factor
 	if _corner.size != Vector2.ZERO:
 		# Keep the corner figure pinned to its bottom-left anchor as it shrinks.
 		_corner.pivot_offset = Vector2(0.0, _corner.size.y)
@@ -61,6 +63,7 @@ func _layout_responsive_figures() -> void:
 			(figure as BodyScan).set_responsive_scale(scale_factor)
 		else:
 			figure.scale = Vector2.ONE * scale_factor
+	_on_thought_layer_resized()
 
 
 func _refresh_gameplay_texts() -> void:
@@ -194,6 +197,7 @@ func _relayout_thoughts() -> void:
 	var zone := _thought_spawn_zone()
 	if zone.size.x < 1.0 or zone.size.y < 1.0:
 		return
+	_thought_bubble.set_display_scale(_thought_scale())
 	_thought_bubble.follow_zone(
 		ThoughtBubble.to_layer(_thought_layer, zone.get_center()),
 		ThoughtBubble.to_layer(_thought_layer, _corner.get_head_global_position()),

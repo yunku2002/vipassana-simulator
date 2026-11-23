@@ -6,6 +6,7 @@ extends Control
 ## kept as a pixel mask.
 
 const DESIGN_SIZE := Vector2(1024, 1536)
+const SAFE_FALLBACK_TEXTURE_LIMIT := 4096.0
 ## Coverage mask pixels per design pixel. Independent of the on-screen scale.
 const MASK_SCALE := 0.5
 const _CLUSTER_SPAWN_ATTEMPTS := 40
@@ -203,6 +204,14 @@ func set_responsive_scale(scale_factor: float) -> void:
 	_layout_panes()
 	if keep_pose:
 		_set_body_positions(body_pos, body_b_pos)
+
+
+func _has_point(point: Vector2) -> bool:
+	# The figure can draw outside the scaled Control, so keep its hit area full-size.
+	var factor := maxf(absf(scale.x), 0.01)
+	var center := pivot_offset if pivot_offset != Vector2.ZERO else size * 0.5
+	var hit_size := size / factor
+	return Rect2(center - hit_size * 0.5, hit_size).has_point(point)
 
 
 ## separation is the minimum distance between centers, in design pixels.
@@ -565,20 +574,38 @@ func _build_figure() -> void:
 	if svg.is_empty():
 		push_error("Failed to read standing.svg")
 		return
-	var displayed := SvgRaster.rasterize(svg, _body_scale)
+	# Keep the runtime texture within the common 4096px mobile GPU limit.
+	# The body is still laid out at _body_scale; only its raster resolution is reduced.
+	var max_texture_size := _max_figure_texture_size()
+	var raster_scale := minf(
+		_body_scale,
+		max_texture_size / maxf(DESIGN_SIZE.x, DESIGN_SIZE.y)
+	)
+	var displayed := SvgRaster.rasterize(svg, raster_scale)
 	if displayed == null or displayed.get_width() < 2:
 		push_error("Failed to rasterize standing.svg")
 		return
-	_pixels_per_design = float(displayed.get_width()) / DESIGN_SIZE.x
+	_pixels_per_design = _body_scale
 	var tex := ImageTexture.create_from_image(displayed)
-	_apply_figure_texture(_body, tex, displayed.get_size())
+	_apply_figure_texture(_body, tex)
 	if _body_b != null:
-		_apply_figure_texture(_body_b, tex, displayed.get_size())
+		_apply_figure_texture(_body_b, tex)
 	_build_mask(svg)
 
 
-func _apply_figure_texture(body: Control, tex: Texture2D, tex_size: Vector2) -> void:
-	body.size = tex_size
+func _max_figure_texture_size() -> float:
+	var rd := RenderingServer.get_rendering_device()
+	if rd != null:
+		var limit := rd.limit_get(RenderingDevice.LIMIT_MAX_TEXTURE_SIZE_2D)
+		if limit > 0:
+			return float(limit)
+	# Compatibility/OpenGL does not expose this limit through RenderingDevice.
+	# Use 4096 as a conservative fallback for older mobile GPUs.
+	return SAFE_FALLBACK_TEXTURE_LIMIT
+
+
+func _apply_figure_texture(body: Control, tex: Texture2D) -> void:
+	body.size = DESIGN_SIZE * _body_scale
 	var figure := body.get_node("Figure") as TextureRect
 	figure.texture = tex
 	for child in body.get_children():
@@ -1204,7 +1231,7 @@ func _resolve_cluster(sensation: _Sensation) -> void:
 
 func _play_anicca() -> void:
 	_anicca_resolves += 1
-	if _anicca_resolves % _anicca_stride != 0:
+	if (_anicca_resolves - 1) % _anicca_stride != 0:
 		return
 	if _anicca_player == null:
 		_anicca_player = AudioStreamPlayer.new()

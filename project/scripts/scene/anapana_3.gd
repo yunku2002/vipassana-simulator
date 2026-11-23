@@ -26,15 +26,6 @@ var _sensation_timer: float = 0.0
 var _active_sensations: Dictionary = {}
 
 
-func _responsive_figure_control() -> Control:
-	return _focus
-
-
-func _responsive_figure_pivot(_figure: Control) -> Vector2:
-	# Keep the crop's center anchor on the stage center while scaling.
-	return Vector2(-_focus.offset_left, -_focus.offset_top)
-
-
 func _enter_tree() -> void:
 	$Margin/Body/HeadFocus.configure(dim_mask_path, region_radius_min, region_radius_max)
 

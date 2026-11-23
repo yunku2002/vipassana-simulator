@@ -162,12 +162,12 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 12
 
-[node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=744248170]
-custom_minimum_size = Vector2(160, 44)
-layout_mode = 2
-text = "Continue"
-
 [node name="BtnMenu" type="Button" parent="WinLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=2072382797]
 custom_minimum_size = Vector2(160, 44)
 layout_mode = 2
 text = "Main Menu"
+
+[node name="BtnContinue" type="Button" parent="WinLayer/Center/Panel/Margin/VBox/ButtonsRow" unique_id=744248170]
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+text = "Continue"
