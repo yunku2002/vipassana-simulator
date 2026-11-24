@@ -563,10 +563,13 @@ func _layout_panes() -> void:
 	var center := size * 0.5
 	var pane_start := center - center / factor
 	var pane_size := size / factor
-	_left_pane.position = Vector2(pane_start.x, pane_start.y)
-	_left_pane.size = Vector2(center.x / factor, pane_size.y)
-	_right_pane.position = Vector2(center.x, pane_start.y)
-	_right_pane.size = Vector2((size.x - center.x) / factor, pane_size.y)
+	# Bleed one screen pixel past every outer edge and overlap at the center seam
+	# so the right pane owns the seam without drawing both halves in one column.
+	var bleed := 1.0 / factor
+	_left_pane.position = Vector2(pane_start.x, pane_start.y) - Vector2.ONE * bleed
+	_left_pane.size = Vector2(center.x / factor + bleed, pane_size.y + bleed * 2.0)
+	_right_pane.position = Vector2(center.x, pane_start.y) - Vector2.ONE * bleed
+	_right_pane.size = Vector2((size.x - center.x) / factor, pane_size.y) + Vector2.ONE * bleed * 2.0
 
 
 func _build_figure() -> void:
