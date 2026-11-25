@@ -7,15 +7,15 @@ const _SvgPath := preload("res://scripts/other/svg_path.gd")
 
 signal region_pressed(region_id: int)
 
-## Design px to screen px. Same zoom as the old 256 → 1280 head crop.
-const PIXELS_PER_DESIGN := 5.0
+## Design px to raster px.
+const PIXELS_PER_DESIGN := 6.0
 ## 256-wide column centered on the face (x = 384). Design y = 0 to 384,
 ## so the crown is included and the cut is at the upper chest.
-const HEAD_ATLAS := Rect2(384, 0, 256, 384)
-## On-screen size of that crop: 256×5 by 384×5. The chest slice continues below it.
-const DISPLAY_SIZE := Vector2(1280, 1920)
-## Repeat the chest edge from the crop bottom down to the canvas bottom (y = 1024).
-const CHEST_EXTEND_PX := 3200
+const HEAD_ATLAS := Rect2(384, 81, 256, 384)
+## On-screen crop size, derived from its source dimensions and raster scale.
+const DISPLAY_SIZE := HEAD_ATLAS.size * PIXELS_PER_DESIGN
+## Repeat the chest edge from the crop bottom down to the 1024px source canvas bottom.
+const CHEST_EXTEND_PX := int((1024.0 - HEAD_ATLAS.end.y) * PIXELS_PER_DESIGN)
 
 static var _REGION_ACTIVE: Color = Color.from_hsv(50.0 / 360.0, 0.85, 0.95, 0.55)
 ## Soft edge as a fraction of the circle radius (0 = hard, ~0.25 = soft).
@@ -61,6 +61,10 @@ func configure(mask_path: String, radius_min: float, radius_max: float) -> void:
 
 
 func _ready() -> void:
+	offset_left = -DISPLAY_SIZE.x * 0.5
+	offset_top = -DISPLAY_SIZE.y * 0.5
+	offset_right = DISPLAY_SIZE.x * 0.5
+	offset_bottom = DISPLAY_SIZE.y * 0.5
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = DISPLAY_SIZE
 	_region_material = _make_region_material()

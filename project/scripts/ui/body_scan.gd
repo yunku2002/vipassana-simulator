@@ -147,6 +147,7 @@ var _drag_body_start: Vector2 = Vector2.ZERO
 var _drag_last: Vector2 = Vector2.ZERO
 var _drag_side_left: bool = true
 var _active_touch_index: int = -1
+var _sensation_press_active: bool = false
 
 var _circle_material: ShaderMaterial
 var _dim_material: ShaderMaterial
@@ -432,12 +433,18 @@ func _gui_input(event: InputEvent) -> void:
 		touch_index = touch.index
 	else:
 		return
+	# A single touchscreen press may arrive as both ScreenTouch and an emulated
+	# MouseButton, in either order. Consume the counterpart until release.
+	if _sensation_press_active:
+		accept_event()
+		return
 	if _dragging:
 		return
 	if _equanimity and _press_enabled:
 		var hit := _sensation_at_local(local_position)
 		if hit != null:
 			accept_event()
+			_sensation_press_active = true
 			if _is_default_hold(hit.cluster_index):
 				_resolve_cluster(hit)
 			else:
@@ -455,6 +462,12 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and not (event as InputEventMouseButton).pressed:
+		_sensation_press_active = false
+	if event is InputEventScreenTouch:
+		var touch_release := event as InputEventScreenTouch
+		if not touch_release.pressed or touch_release.canceled:
+			_sensation_press_active = false
 	if not _dragging:
 		return
 	if event is InputEventMouseButton:
